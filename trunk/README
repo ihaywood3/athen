@@ -1,0 +1,18 @@
+Configuration file can be in /etc/wedgechick.conf, or C:\Program Files\Wedgechick.ini
+or .wedgechick in the user's home directory.
+
+GPG must be installed and either in /usr/bin/gpg or C:\Program Files\GNU\GnuPG\gpg.exe
+
+The configuration file has the following values:
+
+keyserver: the default keyserver (keys.gnupg.net)
+base: the base directory (/var/spool/wedgechick)
+the base directory must contain the following: incoming,
+outgoing, errors and waiting subdirectories. These can be set individually
+
+logfile: the log file (/var/log/wedgechick.log)
+from: the e-mail address e-mails should be from
+smtp: the SMTP server
+pop: the POP3 server
+user: the POP3 username
+password: the POP3 password
