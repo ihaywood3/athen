@@ -5,6 +5,8 @@ require 'mail'
 require 'date'
 require 'hl7/message'
 
+module Athen
+
 def file_code
   (Time.now.to_i-1222819200).to_s(36)
 end
@@ -209,4 +211,6 @@ def text2hl7(msg)
   obx.result_status = "F"
   hl7 << obx
   hl7
+end
+
 end

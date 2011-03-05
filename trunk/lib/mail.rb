@@ -5,6 +5,7 @@ require 'rubygems'
 require 'tmail'
 require 'gpg'
 
+module Athen
 def pgp_create(m,to)
   gpg = GPG.new
   signature= gpg.sign(m)
@@ -227,4 +228,6 @@ def receive_mails
     pgp_decrypt(m.pop)
     m.delete
   end
+end
+
 end
