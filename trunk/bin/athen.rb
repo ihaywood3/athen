@@ -1,11 +1,13 @@
 #!/usr/bin/ruby
 
+$: << File.join(File.expand_path(File.dirname(__FILE__)),"..","lib")
+require 'rubygems'
 require 'file'
 require 'mail'
 require 'getoptlong'
+require 'interfaces'
 
 # main code
-$cfg = {}
 
 GetoptLong.new(
   ['--help','-h',GetoptLong::NO_ARGUMENT],
@@ -15,11 +17,11 @@ GetoptLong.new(
   ['--logfile','-l',GetoptLong::REQUIRED_ARGUMENT]).each do |opt,arg|
     case opt
       when "--version":
-        print "wedgechick 0.1\n"
+        print "ATHEN 0.1\n"
         exit
       when "--licence"
         print <<EOF
-    Wedgechick -  a program to send/recieve HL7 via OpenPGP/SMTP
+    ATHEN -  a program to send/recieve HL7 via OpenPGP/SMTP
     Copyright (C) 2008,2010 Ian Haywood
 
     This program is free software: you can redistribute it and/or modify
@@ -38,7 +40,7 @@ EOF
         exit
       when "--help":
         print <<EOF
-wedgechick options commands
+ATHEN options and commands
 Options:
    --help - this message
    --version, -v - version information
@@ -48,6 +50,7 @@ Options:
 
 Commands:
   pop - fetch e-mails via POP3
+  imap - fetch e-mails via IMAP (note tries to runs forever using the IDLE command)
   mail - receive mail on standard input
   scan - scan input directory and send
   resend - resend unACKnowledged messages
@@ -56,24 +59,26 @@ Commands:
 Note more than one command can be run at once
 EOF
     when "--conffile":
-      set_config(arg)
+      Athen.set_config(arg)
     when "--logfile"
       $cfg['logfile'] = arg
   end
 end
   
 is_setup = false
+iface = Athen::CliInterface.new
 ARGV.each do |cmd|
   unless is_setup
-    setup
+    Athen.setup
     is_setup = true
   end
   case cmd
-    when 'pop': receive_mails
-    when 'mail': pgp_decrypt(STDIN.read)
-    when 'scan': scan_files
-    when 'resend': resend
-    when 'trust': resend_trust 
+    when 'pop': Athen.receive_mails_pop
+    when 'imap': Athen.receive_mails_imap
+    when 'mail': Athen.pgp_decrypt(STDIN.read)
+    when 'scan': Athen.scan_files
+    when 'resend': Athen.resend
+    when 'trust': Athen.resend_trust 
   end
 end
 

@@ -7,8 +7,13 @@ module Athen
       @debug = d
     end
 
+    def logfile=(s)
+      @logfile = s
+    end
+
     # log a string, as part of routine operations
     def log(s)
+      @logfile.write(s+'\n')
     end
 
     # log a string: when debugging
@@ -26,21 +31,16 @@ module Athen
 
   # very simple CLI interface
   class CliInterface < CommonInterface
-    def initialize
-      @panicked = false
-    end
 
     def log(s)
+      super(s)
       puts s
     end
 
     def panic(s)
-      @panicked  = true
-      log("***ERROR***:" + s)
+      STDERR.write("***ERROR***:" + s)
+      exit 64
     end
 
-    def panicked
-      @panicked
-    end
   end
 end
