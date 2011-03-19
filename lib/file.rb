@@ -12,19 +12,20 @@ def file_code
 end
 
 def setup
-  cfgs = ['/etc/wedgechick.conf','C:\\Wedgechick.ini','C:\\Program Files\\Wedgechick\\Wedgechick.ini','wedgechick.conf','Wedgechick.ini']
+  $cfg = {}
+  cfgs = ['/etc/athen.conf','C:\\ATHEN.INI','C:\\Program Files\\Athen\\Athen.ini','athen.conf','ATHEN.INI']
   if ENV['HOME']
-    cfgs << ENV['HOME']+File::Separator+'.wedgechick'
+    cfgs << ENV['HOME']+File::Separator+'.athen.conf'
   end
   cfgs.each {|c| config_file(c)}
   $cfg['keyserver'] = 'hkp://subkeys.pgp.net/' unless $cfg['keyserver']
-  $cfg['base'] = '/var/spool/wedgechick/' unless $cfg['base']
-  $cfg['logfile'] = '/var/log/wedgechick.log' unless $cfg['logfile']
+  $cfg['base'] = '/var/spool/athen/' unless $cfg['base']
+  $cfg['logfile'] = '/var/log/athen.log' unless $cfg['logfile']
   $cfg['incoming'] = $cfg['base']+File::Separator+'incoming' unless $cfg['incoming']
   $cfg['outgoing'] = $cfg['base']+File::Separator+'outgoing' unless $cfg['outgoing']
   $cfg['errors'] = $cfg['base']+File::Separator+'errors' unless $cfg['errors']
   $cfg['waiting'] = $cfg['base']+File::Separator+'waiting' unless $cfg['waiting']
-  $logfile = File.open($cfg['logfile'],'a')
+  iface.logfile = File.open($cfg['logfile'],'a')
 end
 
 def config_file(cfg)
@@ -38,23 +39,15 @@ def config_file(cfg)
   end
 end
 
-def config_insist(*cfgs)
+def config_insist(iface, *cfgs)
   cfgs.each do |l|
     unless $cfg[l]
-      error("%s config option not set" % l)
-      exit 64
+      iface.log("%s config option not set" % l)
+      iface.panic("Not Configured")
     end
   end
 end
 
-def log(str)
-  $logfile.write(Time.new.to_s+" "+str+"\n")  
-end
-
-def error(str)
-  $logfile.write(Time.new.to_s+" [ERROR] "+str+"\n")
-  STDERR.write(str+"\n")
-end
 
 def unique_file(dir,suggested_name=nil,suffix=".hl7",mode="?")
   code = file_code()
@@ -89,18 +82,18 @@ def scan_files
 end
 
 
-def process_file(fpath,msg)
+def process_file(iface,fpath,msg)
   if msg[0..3] == "MSG|" or msg[0..3] == "FSH|" or msg[0..3] == "BHS|"
     begin
       hl7 = HL7::Message.parse(msg)
     rescue
-      error("HL7 parse failed: %s: %s" % [fpath,$!])
+      iface.log("HL7 parse failed: %s: %s" % [fpath,$!])
     end
   else
     begin
       hl7 = text2hl7(msg)
     rescue
-      error("text->HL7 conversion failed: %s: %s" % [fpath,$!.to_s])
+      iface.log("text->HL7 conversion failed: %s: %s" % [fpath,$!.to_s])
       return
     end
   end
@@ -109,7 +102,7 @@ def process_file(fpath,msg)
   actual_send(hl7)
 end
 
-def actual_send(hl7)
+def actual_send(iface,hl7)
   to = hl7.msh.receiving_facility.namespace_id
   fpath = case pgp_create(hl7.to_qp,to)
     when :success : $cfg['waiting']+File::Separator+code+"0.hl7"
@@ -118,13 +111,14 @@ def actual_send(hl7)
   end
   begin 
     File.open(fpath,"w") {|f| f.write hl7.to_hl7 }
-    log("wrote message to %s" % fpath)
+    iface.log("wrote message to %s" % fpath)
   rescue
-    error("error writing to %s: %s" % [fpath,$!.to_s])
+    iface.log("error writing to %s: %s" % [fpath,$!.to_s])
+    iface.panic("cannot write to directory %s" % fpath)
   end
 end
 
-def resend
+def resend(iface)
   Dir.glob($cfg['waiting']+File::Separator+"*.hl7") do |fname|
     fname =~ /(.*)(.)\.hl7$/
     stat = File::Stat.new fname
@@ -142,7 +136,7 @@ def resend
           hl7 = HL7::Message.parse(s)
           File.unlink(fname)
           to = hl7.msh.receiving_facility.to_s
-          error("file %s to %s expired with no ACK" % [fname,to])
+          iface.log("file %s to %s expired with no ACK" % [fname,to])
 	  File.new($cfg['errors']+File::Separater+$1,"w") {|f| f.write s}
         end
     end
