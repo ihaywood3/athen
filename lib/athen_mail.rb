@@ -1,12 +1,13 @@
 require 'net/smtp'
 require 'net/pop'
+require 'net/imap'
 require 'base64'
 require 'rubygems'
-require 'tmail'
+#require 'tmail'
 require 'gpg'
 
 module Athen
-  def pgp_create(m,to)
+  def Athen.pgp_create(m,to)
     gpg = GPG.new
     signature= gpg.sign(m)
     signature.gsub!("\n","\r\n")
@@ -61,7 +62,7 @@ EOF2
     return :success
   end
 
-  def pgp_decrypt(mailtext)
+  def Athen.pgp_decrypt(mailtext)
     pgp = false
     body = nil
     begin
@@ -180,7 +181,7 @@ EOF2
   end
 
 
-  def error_email(message,attachment=nil)
+  def Athen.error_email(message,attachment=nil)
     m = TMail::Mail.new
     if attachment
       boundary = Base64.encode64(Time.now.to_s).strip
@@ -212,7 +213,7 @@ EOF4
     send_email(m,$cfg['errors'])
   end
 
-  def send_email(mail, to)
+  def Athen.send_email(mail, to)
     config_insist('smtp','from','error_report')
     Net::SMTP.start($cfg['smtp'],25) do |smtp|
       smtp.send_message mail, to, $cfg['from'] 
@@ -220,7 +221,7 @@ EOF4
   end
 
 
-  def receive_mails_pop
+  def Athen.receive_mails_pop
     config_insist('imap_host','imap_user','imap_password')
     pop = Net::POP3.new($cfg['imap_host'])
     pop.start($cfg['imap_user'],$cfg['imap_password'])
@@ -230,7 +231,7 @@ EOF4
     end
   end
 
-  def receive_mails_imap(iface)
+  def Athen.receive_mails_imap(iface)
     config_insist(iface,'imap_host','imap_user','imap_password')
     failures = 0
     cont = false
@@ -238,32 +239,43 @@ EOF4
       begin
         imap = Net::IMAP.new($cfg['imap_host'])
         imap.login($cfg['imap_user'], $cfg['imap_password'])
-        imap.add_response_handler do |resp|
-          if resp.kind_of?(Net::IMAP::UntaggedResponse) and resp.name == "EXISTS"
-            cont = false
-          end
-        end
         imap.select('INBOX')
+        p imap.capability
         failures = 0
         iface.log("Logged on to #{$cfg['imap_host']}")
         loop do
           imap.search(["NOT", "DELETED"]).each do |message_id|
             iface.log("Fetching message #{message_id}...")
-            p imap.fetch(message_id, "RFC822")[0].attr["RFC822"]
+            puts imap.fetch(message_id, "RFC822")[0].attr["RFC822"]
             imap.store(message_id, "+FLAGS", [:Deleted])
           end
           cont = true
           while cont
             idler = Thread.new(Thread.current) do |parent|
-              imap.idle do
-                cont = false
-                parent.run
+              begin
+                iface.log("inside the idler thread")
+                imap.idle do |resp|
+                  puts "the response name is #{resp.name}"
+                  if resp.kind_of?(Net::IMAP::UntaggedResponse) and resp.name == "EXISTS"
+                    cont = false
+                    imap.idle_done
+                    parent.run
+                  end
+                end
+              rescue
+                puts "ERROR2:%s %s" % [$!.to_s,$!.backtrace]
               end
             end
+            iface.log("sleeping...")
             sleep 900 # main thread sleeps for 15mins
-            idler.stop
-            imap.idle_done
-            imap.noop
+            iface.log("stopping idler")
+            idler.kill
+            if cont
+              # timer has expired
+              imap.idle_done
+              iface.log("running NOOP")
+              imap.noop
+            end
           end
         end  
       rescue
@@ -273,7 +285,7 @@ EOF4
           imap.disconnect()
         rescue
         end
-        iface.log($!.to_s)
+        iface.log("***ERROR:**: %s %s" % [$!.to_s,$!.backtrace])
         case failures
           when 1 then sleep 10
           when 2 then sleep 30

@@ -1,13 +1,14 @@
-#!/usr/bin/ruby
+#!/usr/bin/ruby1.9.2
 
 $: << File.join(File.expand_path(File.dirname(__FILE__)),"..","lib")
 require 'rubygems'
-require 'file'
-require 'mail'
+require 'athen_file'
+require 'athen_mail'
 require 'getoptlong'
 require 'interfaces'
 
 # main code
+
 
 GetoptLong.new(
   ['--help','-h',GetoptLong::NO_ARGUMENT],
@@ -16,7 +17,7 @@ GetoptLong.new(
   ['--conffile','-c',GetoptLong::REQUIRED_ARGUMENT],
   ['--logfile','-l',GetoptLong::REQUIRED_ARGUMENT]).each do |opt,arg|
     case opt
-      when "--version":
+      when "--version"
         print "ATHEN 0.1\n"
         exit
       when "--licence"
@@ -38,7 +39,7 @@ GetoptLong.new(
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 EOF
         exit
-      when "--help":
+      when "--help"
         print <<EOF
 ATHEN options and commands
 Options:
@@ -58,7 +59,7 @@ Commands:
 
 Note more than one command can be run at once
 EOF
-    when "--conffile":
+    when "--conffile"
       Athen.set_config(arg)
     when "--logfile"
       $cfg['logfile'] = arg
@@ -69,17 +70,17 @@ is_setup = false
 iface = Athen::CliInterface.new
 ARGV.each do |cmd|
   unless is_setup
-    Athen.setup
+    Athen.setup(iface)
     is_setup = true
   end
   case cmd
-    when 'pop': Athen.receive_mails_pop
-    when 'imap': Athen.receive_mails_imap
-    when 'mail': Athen.pgp_decrypt(STDIN.read)
-    when 'scan': Athen.scan_files
-    when 'resend': Athen.resend
-    when 'trust': Athen.resend_trust 
+    when 'pop' then Athen.receive_mails_pop
+    when 'imap' then Athen.receive_mails_imap(iface)
+    when 'mail' then Athen.pgp_decrypt(STDIN.read)
+    when 'scan' then Athen.scan_files
+    when 'resend' then Athen.resend
+    when 'trust' then Athen.resend_trust 
   end
 end
 
-$logfile.close if is_setup
+#$logfile.close if is_setup
