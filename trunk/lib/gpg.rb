@@ -10,12 +10,7 @@ end
 
 class WrongKey < GPGError
   def initialize
-    @message = <<EOF9
-FROM has tried to send you a message using the
-wrng public key, so you couldn't decrypt it.
-Please ask them to end it again with the 
-correct key
-EOF9
+    @message = "FROM has tried to send you a message using the wrong public key, so you couldn't decrypt it.Please ask them to end it again with the  correct key"
   end
 end
 
@@ -196,7 +191,7 @@ class GPG
         keys[-1][:fingerprint] = line[9]
       elsif line[0] == 'uid'
         keys[-1][:user_id] << line[9]
-      elsif line[0] == 'sig':
+      elsif line[0] == 'sig'
           keys[-1][:signatures] = [] if not keys[-1].has_key? :signature
         keys[-1][:signatures] << {:algorithm=>GPG::Algos[line[3]], :creation=>line[5],
           :user_id=>line[9], :key_id=>line[4]}

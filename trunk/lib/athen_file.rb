@@ -1,17 +1,16 @@
 
 # this is the component that interfaces with the filesystem
 
-require 'mail'
 require 'date'
 require 'hl7/message'
 
 module Athen
 
-def file_code
+def Athen.file_code
   (Time.now.to_i-1222819200).to_s(36)
 end
 
-def setup
+def Athen.setup(iface)
   $cfg = {}
   cfgs = ['/etc/athen.conf','C:\\ATHEN.INI','C:\\Program Files\\Athen\\Athen.ini','athen.conf','ATHEN.INI']
   if ENV['HOME']
@@ -28,18 +27,18 @@ def setup
   iface.logfile = File.open($cfg['logfile'],'a')
 end
 
-def config_file(cfg)
+def Athen.config_file(cfg)
   if File.exists? cfg
     File.open(cfg).each_line do |l|
       case l
-        when /^#.*/: nil
-        when /(.*)=(.*)/ : $cfg[$1.strip] = $2.strip
+        when /^#.*/ then nil
+        when /(.*)=(.*)/ then $cfg[$1.strip] = $2.strip
       end
     end
   end
 end
 
-def config_insist(iface, *cfgs)
+def Athen.config_insist(iface, *cfgs)
   cfgs.each do |l|
     unless $cfg[l]
       iface.log("%s config option not set" % l)
@@ -49,7 +48,7 @@ def config_insist(iface, *cfgs)
 end
 
 
-def unique_file(dir,suggested_name=nil,suffix=".hl7",mode="?")
+def Athen.unique_file(dir,suggested_name=nil,suffix=".hl7",mode="?")
   code = file_code()
   if suggested_name
     name = suggested_name
@@ -66,7 +65,7 @@ def unique_file(dir,suggested_name=nil,suffix=".hl7",mode="?")
   return name
 end
 
-def scan_files
+def Athen.scan_files
   $cfg['incoming'].split(';').each do |scan|
     Dir.new(scan).each do |fname|
       unless fname == '.' or fname == '..'
@@ -82,7 +81,7 @@ def scan_files
 end
 
 
-def process_file(iface,fpath,msg)
+def Athen.process_file(iface,fpath,msg)
   if msg[0..3] == "MSG|" or msg[0..3] == "FSH|" or msg[0..3] == "BHS|"
     begin
       hl7 = HL7::Message.parse(msg)
@@ -102,12 +101,12 @@ def process_file(iface,fpath,msg)
   actual_send(hl7)
 end
 
-def actual_send(iface,hl7)
+def Athen.actual_send(iface,hl7)
   to = hl7.msh.receiving_facility.namespace_id
   fpath = case pgp_create(hl7.to_qp,to)
-    when :success : $cfg['waiting']+File::Separator+code+"0.hl7"
-    when :no_key : $cfg['errors']+File::Separator+".hl7"
-    when :no_trust : $cfg['waiting']+File::Separator+"x.hl7"
+    when :success then $cfg['waiting']+File::Separator+code+"0.hl7"
+    when :no_key then $cfg['errors']+File::Separator+".hl7"
+    when :no_trust then $cfg['waiting']+File::Separator+"x.hl7"
   end
   begin 
     File.open(fpath,"w") {|f| f.write hl7.to_hl7 }
@@ -118,19 +117,19 @@ def actual_send(iface,hl7)
   end
 end
 
-def resend(iface)
+def Athen.resend(iface)
   Dir.glob($cfg['waiting']+File::Separator+"*.hl7") do |fname|
     fname =~ /(.*)(.)\.hl7$/
     stat = File::Stat.new fname
     age = Time.now.to_i-stat.mtime.to_i
     case $2
-      when "0": 
+      when "0" 
         resend_file(fname,$1+"1.hl7") if age > 3600
-      when "1":
+      when "1"
         resend_file(fname,$1+"2.hl7") if age > 3600*6
-      when "2":
+      when "2"
         resend_file(fname,$1+"3.hl7") if age > 3600*24
-      when "3":
+      when "3"
         if age > 3600*2
 	  s = File.new(fname) {|f| f.read }
           hl7 = HL7::Message.parse(s)
@@ -143,7 +142,7 @@ def resend(iface)
   end
 end
 
-def resend_trust
+def Athen.resend_trust
   Dir.glob($cfg['waiting']+File::Separator+"*x.hl7") do |fname|
     hl7 = HL7::Message.parse(File.new(fname) {|f| f.read })
     File.unlink(fname)
@@ -151,7 +150,7 @@ def resend_trust
   end
 end
 
-def resend_file(oldfile,newfile)
+def Athen.resend_file(oldfile,newfile)
   s = File.new(oldname) {|f| f.read}
   File.new($cfg['waiting']+File::Separater+newfile,"w") {|f| f.write s}
   hl7 = HL7::Message.parse(s)
@@ -161,7 +160,7 @@ def resend_file(oldfile,newfile)
 end
 
 
-def text2hl7(msg)
+def Athen.text2hl7(msg)
   m = TMail::Mail.parse(msg)
   hl7 = HL7::Message.new
   msh = hl7.standard_msh

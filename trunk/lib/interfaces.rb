@@ -38,7 +38,7 @@ module Athen
     end
 
     def panic(s)
-      STDERR.write("***ERROR***:" + s)
+      STDERR.write("***ERROR***:\n" + s)
       exit 64
     end
 
