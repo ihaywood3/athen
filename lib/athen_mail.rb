@@ -1,4 +1,5 @@
 require 'net/smtp'
+require 'net/imap'
 require 'net/pop'
 require 'net/imap'
 require 'base64'
