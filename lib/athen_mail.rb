@@ -1,114 +1,103 @@
 require 'net/smtp'
 require 'net/imap'
 require 'net/pop'
-require 'net/imap'
 require 'base64'
 require 'rubygems'
-#require 'tmail'
+require 'mail'
 require 'gpg'
 
 module Athen
-  def Athen.pgp_create(m,to)
-    gpg = GPG.new
-    signature= gpg.sign(m)
-    signature.gsub!("\n","\r\n")
-    boundary = Base64.encode64(Time.now.to_s).strip
-    boundary1 = "inner"+boundary
-    m2 = <<EOF
+  
+
+
+  class MailManager
+
+    def initalize(iface,fso)
+      @fso = fso
+      @iface = iface
+      Mail.defaults do
+        params = {:address=> @fso.get_config('smtp_server'),:port=>25}
+        if @fso.get_config('smtp_username')
+          params[:user_name] = @fso.get_config('smtp_username')
+          params[:password] = @fso.get_config('smtp_password'),
+          params[:authentication] = 'plain'
+          params[:enable_starttls_auto] = true
+        end
+        delivery_method :smtp, params
+      end
+    end
+
+    def pgp_send(data,to,mime="application/edi-hl7")
+      gpg = GPG.new
+      signature = gpg.sign(m)
+      signature.gsub!("\n","\r\n")
+      # we need to do this manually as the attached body must be exactly byte-for-byte what we signed
+      boundary = Base64.encode64(Time.now.to_s).strip
+      m1 = <<EOF
 Content-Type: multipart/signed;\r
-  boundary="#{boundary1}";\r
+  boundary="#{boundary}";\r
   protocol="application/pgp-signature";\r
   micalg=pgp-sha1\r
 \r
---#{boundary1}\r
-Content-Type: application/edi-hl7\r
+--#{boundary}\r
+Content-Type: #{mime}\r
 Content-Transfer-Encoding: quoted-printable\r
 \r
-#{m}\r
---#{boundary1}\r
+#{data}
+--#{boundary}\r
 Content-Type: application/pgp-signature; name=signature.asc\r
 Content-Description: This is a digitally signed message part.\r
 \r
 #{signature}\r
---#{boundary1}--\r
+--#{boundary}--\r
 EOF
-    begin
       crypted = gpg.encrypt(m2,to).gsub(/([^\r])\n/,"\\1\r\n")
-    rescue GPGError
-      error_email($!.message,nil)
-      log("message not sent due to GPG error") 
-      return :no_key
+      m2 = Mail.deliver do 
+        part(:content_type=>"application/pgp-encrypted",:content_disposition=>"attachment",:body="Version: 1")
+        part(:content_type=>"application/octet-stream",:content_disposition=>"inline; filename=\"msg.asc\"",:body=>crypted)
+        content_type("multipart/encrypted; protocol=\"application/pgp-encrypted\"")
+        to to
+        from @fso.get_config('from')
+        subject "Encrypted message"
+      end
     end
-    m3 = TMail::Mail.new
-    boundary2 = "outer"+boundary
-    m3.body = <<EOF2
---#{boundary2}\r
-Content-Type: application/pgp-encrypted\r
-Content-Disposition: attachment\r
-\r
-Version: 1\r
---#{boundary2}\r
-Content-Type: application/octet-stream\r
-Content-Disposition: inline; filename="msg.asc"\r
-\r
-#{crypted}\r
---#{boundary2}--\r
-EOF2
-    m3.set_content_type('multipart','encrypted',{'boundary'=>boundary2,'protocol'=>'application/pgp-encrypted'})
-    m3['to'] = to
-    m3['from'] = $cfg['from']
-    m3['date'] = Time.new.strftime "%a, %e %b %Y, %H:%m:%S  %z"
-    m3['subject'] = "Encrypted message"
-    send_email(m3,to)
-    return :success
-  end
 
-  def Athen.pgp_decrypt(mailtext)
-    pgp = false
-    body = nil
-    begin
-      m1 = TMail::Mail.parse(mailtext)
+    def pgp_decrypt(mailtext)
+      pgp = false
+      body = nil
+      m1 = Mail.parse(mailtext)
       if m1.multipart? 
-        m1.parts.each do |part|
+        m1.parts.map do |part|
           if part.content_type == 'application/octet-stream'
-            body = part.body
+            body = part.body.decoded
           end
           if part.content_type == 'application/pgp-encrypted'
             pgp = true
-            log "identified PGP-MIME"
+            @iface.log("identified PGP-MIME",:debug)
           end
         end
       else
-        body = m1.body
+        body = m1.body.decoded
       end
-    rescue TMail::SyntaxError
-      error_email("Unable to parse message",mailtext)
-      return
-    end
-    unless pgp
-      a = mailtext =~ /-----BEGIN PGP MESSAGE-----/
-      if a
-        b = (mailtext =~ /-----END PGP MESSAGE-----/)+25
-        body = mailtext[a..b]
-        log "Using inline PGP"
-      else
-        error("Unable to find PGP text")
-        error_email("Unable to find PGP text",m1)
-        return
-      end
-    end
-    gpg = GPG.new
-    filename = nil
-    begin
-      result = gpg.decrypt_verify(body)
-      if result[:key_id].nil?
-        begin
-          m2 = TMail::Mail.parse(body)
-        rescue TMail::SyntaxError
-          error_email("Unable to parse decrypted contents",m1)
+      unless pgp
+        a = body =~ /-----BEGIN PGP MESSAGE-----/
+        if a
+          b = (body =~ /-----END PGP MESSAGE-----/)+25
+          body = body[a..b]
+          @fso.log("Using inline PGP",:data)
+        else
+          @fso.log("Unable to find PGP text in e-mail from %s" % m1.from,:warn)
           return
         end
-        msg = m2.parts[0].body
+      end
+      gpg = GPG.new
+      filename = nil
+      begin
+        result = gpg.decrypt_verify(body)
+        if result[:key_id].nil?
+          begin
+            m2 = Mail.new(body)
+            msg = m2.parts[0].body
         if m2.parts[0]['Content-Disposition'] and m2.parts[0]['Content-Disposition'].params['filename']
           filename = m2.parts[0]['Content-Disposition'].params['filename']
         end
@@ -173,7 +162,7 @@ EOF2
         log(err)
       end
       if hl7
-        reply = hl7.ack err # when err=nil we generate a "good" AXK
+        reply = hl7.ack err # when err=nil we generate a "good" ACK
         reply.msh.sending_facility = {:namespace_id=>$cfg['from']}
         pgp_create(reply.to_qp,m1['from'])
         log("ACK sent using code %s" % hl7.msh.message_control_id)
@@ -214,12 +203,6 @@ EOF4
     send_email(m,$cfg['errors'])
   end
 
-  def Athen.send_email(mail, to)
-    config_insist('smtp','from','error_report')
-    Net::SMTP.start($cfg['smtp'],25) do |smtp|
-      smtp.send_message mail, to, $cfg['from'] 
-    end
-  end
 
 
   def Athen.receive_mails_pop
