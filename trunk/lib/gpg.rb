@@ -82,7 +82,7 @@ The arguments were
 
 #{args}
 
-Please forward this message to a wegechick developer
+Please forward this message to a ATHEN developer
 EOF14
   end
 end
@@ -96,7 +96,7 @@ class GPG
     'f'=>'Fully trusted', 'u'=>'Ultimately trusted', 'd'=>'Disabled', 
     'i'=>'Invalid', 'r'=>'Revoked'}
   
-  def initialize(gpg_exe=nil)
+  def initialize(gpg_exe)
     @gpg = gpg_exe
     unless @gpg
       ["C:\\Program Files\\GNU\\GnuPG\\gpg.exe","C:\\Program Files\\Wedgechick\\gpg.exe","/usr/bin/gpg"].each do |f|
@@ -184,7 +184,7 @@ class GPG
     text.each do |line|
       line = line.strip.split(':')
       if line[0] == 'pub' or line[0] == 'sec'
-        keys << {:trust=>TrustLevel[line[1]], :length=>line[2], :algorithm=>GPG::Algos[line[3]],
+        keys << {:trust=>GPG::TrustLevel[line[1]], :length=>line[2], :algorithm=>GPG::Algos[line[3]],
           :key_id=>line[4],:creation=>line[5], :expires=>line[6],
           :ownertrust=>line[8], :user_id=>[line[9]], :capabilities=>line[11]}
       elsif line[0] == 'fpr'
@@ -192,7 +192,7 @@ class GPG
       elsif line[0] == 'uid'
         keys[-1][:user_id] << line[9]
       elsif line[0] == 'sig'
-          keys[-1][:signatures] = [] if not keys[-1].has_key? :signature
+        keys[-1][:signatures] = [] if not keys[-1].has_key? :signature
         keys[-1][:signatures] << {:algorithm=>GPG::Algos[line[3]], :creation=>line[5],
           :user_id=>line[9], :key_id=>line[4]}
       end
