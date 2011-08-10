@@ -65,7 +65,7 @@ module Athen
       @iface.open_log(@cfg['logfile'])
     end
 
-    def config_insist(iface, *cfgs)
+    def config_insist(*cfgs)
       cfgs.each do |l|
         unless @cfg[l]
           @iface.log("%s config option not set" % l, :panic)

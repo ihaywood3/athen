@@ -7,8 +7,6 @@ require 'mail'
 require 'gpg'
 
 module Athen
-  
-
 
   class MailManager
 
@@ -28,85 +26,45 @@ module Athen
     end
 
     def pgp_send(data,to,mime="application/edi-hl7")
-      gpg = GPG.new
-      signature = gpg.sign(m)
-      signature.gsub!("\n","\r\n")
-      # we need to do this manually as the attached body must be exactly byte-for-byte what we signed
-      boundary = Base64.encode64(Time.now.to_s).strip
-      m1 = <<EOF
-Content-Type: multipart/signed;\r
-  boundary="#{boundary}";\r
-  protocol="application/pgp-signature";\r
-  micalg=pgp-sha1\r
-\r
---#{boundary}\r
-Content-Type: #{mime}\r
-Content-Transfer-Encoding: quoted-printable\r
-\r
-#{data}
---#{boundary}\r
-Content-Type: application/pgp-signature; name=signature.asc\r
-Content-Description: This is a digitally signed message part.\r
-\r
-#{signature}\r
---#{boundary}--\r
-EOF
-      crypted = gpg.encrypt(m2,to).gsub(/([^\r])\n/,"\\1\r\n")
+      gpg = GPG.new(@fso.config_get('gpg-path'))
+      crypted = gpg.encrypt_sign(m2,to)
       m2 = Mail.deliver do 
-        part(:content_type=>"application/pgp-encrypted",:content_disposition=>"attachment",:body="Version: 1")
-        part(:content_type=>"application/octet-stream",:content_disposition=>"inline; filename=\"msg.asc\"",:body=>crypted)
-        content_type("multipart/encrypted; protocol=\"application/pgp-encrypted\"")
+        body crypted
+        content_type("application/pgp-encrypted")
         to to
+        headers {"X-Original-MIME"=>mime}
         from @fso.get_config('from')
         subject "Encrypted message"
       end
     end
 
     def pgp_decrypt(mailtext)
-      pgp = false
-      body = nil
-      m1 = Mail.parse(mailtext)
-      if m1.multipart? 
-        m1.parts.map do |part|
-          if part.content_type == 'application/octet-stream'
-            body = part.body.decoded
-          end
-          if part.content_type == 'application/pgp-encrypted'
-            pgp = true
-            @iface.log("identified PGP-MIME",:debug)
-          end
-        end
-      else
-        body = m1.body.decoded
+      m = nil
+      begin
+        m = Mail.new(mailtext)
+      rescue
+        @iface.log("unable to parse e-mail: #{$!}",:error)
+        return
       end
-      unless pgp
-        a = body =~ /-----BEGIN PGP MESSAGE-----/
-        if a
-          b = (body =~ /-----END PGP MESSAGE-----/)+25
-          body = body[a..b]
-          @fso.log("Using inline PGP",:data)
-        else
-          @fso.log("Unable to find PGP text in e-mail from %s" % m1.from,:warn)
+      if m.bounced?
+        # process bounce message
+      else
+        unless m.content_type == 'application/pgp-encrypted'
+          @iface.log('not an encrypted message #{m.message_id}',:error)
+          @fso.write_file_error(mailtext,".eml")
           return
         end
-      end
-      gpg = GPG.new
-      filename = nil
-      begin
-        result = gpg.decrypt_verify(body)
-        if result[:key_id].nil?
-          begin
-            m2 = Mail.new(body)
-            msg = m2.parts[0].body
-        if m2.parts[0]['Content-Disposition'] and m2.parts[0]['Content-Disposition'].params['filename']
-          filename = m2.parts[0]['Content-Disposition'].params['filename']
+        err = nil
+        result = nil
+        gpg = GPG.new(@fso.config_get('gpg-path'))
+        begin
+          result = gpg.decrypt_verify(m.body)
+        rescue
         end
-        sig = m2.parts[1].body
-        result = gpg.verify(msg,sig)
-      end
-      if result[:key_id].nil?
-        error_email("Unable to identify signature",m1)
-        log("could  not identify signature")
+        if result[:key_id].nil?
+          log("could  not identify signature",:error)
+          err = "could not identify signature"
+              
       end
       log "message signed by key %s" % result[:key_id]
     rescue GPGError
@@ -171,65 +129,33 @@ EOF
   end
 
 
-  def Athen.error_email(message,attachment=nil)
-    m = TMail::Mail.new
-    if attachment
-      boundary = Base64.encode64(Time.now.to_s).strip
-      m.set_content_type('multipart','mixed',{'boundary'=>boundary})
-      m.body = <<EOF4
---#{boundary}\r
-Content-Type: text/plain\r
-Content-Transfer-Encoding: quoted-printable\r
-Content-Disposition; inline\r
-\r
-#{message}\r
---#{boundary}\r
-Content-Type: message/rfc822; name=email\r
-Content-Disposition: attachment; filename=email\r
-\r
-#{attachment.to_s}\r
-\r
---#{boundary}--\r
-EOF4
-    else
-      m.set_content_type('text','plain')
-      m.body = message
-    end
-    m['mime-version'] = '1.0'
-    m['to'] = $cfg['error_report']
-    m['from'] = $cfg['from']
-    m['subject'] = 'Wedgechick Error'
-    m['date'] = Time.new.strftime("%a, %e %b %Y, %H:%m:%S  %z")
-    send_email(m,$cfg['errors'])
-  end
 
 
-
-  def Athen.receive_mails_pop
-    config_insist('imap_host','imap_user','imap_password')
-    pop = Net::POP3.new($cfg['imap_host'])
-    pop.start($cfg['imap_user'],$cfg['imap_password'])
+  def receive_mails_pop
+    return unless @fso.config_insist('imap_host','imap_user','imap_password')
+    pop = Net::POP3.new(@fso.config_get('imap_host'))
+    pop.start(@fso.get_cig('imap_user'),@fso.config_get('imap_password'))
     pop.each_mail do |m|
       pgp_decrypt(m.pop)
       m.delete
     end
   end
 
-  def Athen.receive_mails_imap(iface)
-    config_insist(iface,'imap_host','imap_user','imap_password')
+  def receive_mails_imap
+    return unless @fso.config_insist('imap_host','imap_user','imap_password')
     failures = 0
     cont = false
     loop do
       begin
-        imap = Net::IMAP.new($cfg['imap_host'])
-        imap.login($cfg['imap_user'], $cfg['imap_password'])
+        imap = Net::IMAP.new(@fso.config_get('imap_host'))
+        imap.login(@fso.config_get('imap_user'), @fso.config_get('imap_password'))
         imap.select('INBOX')
         p imap.capability
         failures = 0
-        iface.log("Logged on to #{$cfg['imap_host']}")
+        @iface.log("Logged on to #{@fso.config_get('imap_host')}",:info)
         loop do
           imap.search(["NOT", "DELETED"]).each do |message_id|
-            iface.log("Fetching message #{message_id}...")
+            @iface.log("Fetching message #{message_id}...")
             puts imap.fetch(message_id, "RFC822")[0].attr["RFC822"]
             imap.store(message_id, "+FLAGS", [:Deleted])
           end
@@ -237,9 +163,9 @@ EOF4
           while cont
             idler = Thread.new(Thread.current) do |parent|
               begin
-                iface.log("inside the idler thread")
+                @iface.log("inside the idler thread",:data)
                 imap.idle do |resp|
-                  puts "the response name is #{resp.name}"
+                  @iface.log("the response name is #{resp.name}",:info)
                   if resp.kind_of?(Net::IMAP::UntaggedResponse) and resp.name == "EXISTS"
                     cont = false
                     imap.idle_done
@@ -247,17 +173,17 @@ EOF4
                   end
                 end
               rescue
-                puts "ERROR2:%s %s" % [$!.to_s,$!.backtrace]
+                @iface.log("ERROR2:%s %s" % [$!.to_s,$!.backtrace],:error)
               end
             end
-            iface.log("sleeping...")
+            @iface.log("sleeping...",:data)
             sleep 900 # main thread sleeps for 15mins
-            iface.log("stopping idler")
+            @iface.log("stopping idler",:data)
             idler.kill
             if cont
               # timer has expired
               imap.idle_done
-              iface.log("running NOOP")
+              @iface.log("running NOOP",:data)
               imap.noop
             end
           end
@@ -269,7 +195,7 @@ EOF4
           imap.disconnect()
         rescue
         end
-        iface.log("***ERROR:**: %s %s" % [$!.to_s,$!.backtrace])
+        @iface.log("***ERROR:**: %s %s" % [$!.to_s,$!.backtrace],:error)
         case failures
           when 1 then sleep 10
           when 2 then sleep 30
