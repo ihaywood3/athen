@@ -1,0 +1,2 @@
+
+apt-get install libapache2-mod-php5 php5-ldap slapd php5-common apache2 postfix postfix-ldap postfix-ldap dovecot-imapd dovecot-ldap roundcube
