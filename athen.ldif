@@ -1,0 +1,36 @@
+# LDAP schema for athen entries
+
+# Copyright (C) Ian Haywood 2003
+
+dn: cn=athen,cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: athen
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.2 
+ NAME 'jabberID' 
+ DESC 'RFC822-style jabber ID' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{256} ) 
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.3
+ NAME 'sipID' 
+ DESC 'RFC822-style ID for Session Initation Protocol' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{256} ) 
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.5 
+ NAME 'providerNumber' 
+ DESC 'Medicare/HIC provider number' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{10}) 
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.6 
+ NAME 'medicalSpecialty' 
+ DESC 'specialty of medicine/allied health discipline' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{64}) 
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.7 
+ NAME 'provisional' 
+ DESC 'whether this person is provisionally registered' 
+ EQUALITY booleanMatch 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.7{1}) 
+olcObjectclasses: (1.3.6.1.4.1.18298.99.1.2 NAME 'athenPerson' 
+ SUP (inetOrgPerson $ pgpKeyInfo)  STRUCTURAL 
+ MUST (medicalSpecialty $ provisional) 
+ MAY (jabberID $ sipID $ providerNumber) ) 

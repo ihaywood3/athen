@@ -1,0 +1,51 @@
+# configuration LDIF using example from OpenLDAP docs
+# loaded in using slapadd
+
+dn: cn=config
+objectClass: olcGlobal
+cn: config
+
+dn: cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: schema
+
+include: file:///etc/ldap/schema/core.ldif
+include: file:///etc/ldap/schema/inetorgperson.ldif
+
+# global database parameters
+dn: olcDatabase=frontend,cn=config
+objectClass: olcDatabaseConfig
+olcDatabase: frontend
+olcAccess: to * by * read
+
+# set a rootpw for the config database so we can bind.
+# deny access to everyone else.
+dn: olcDatabase=config,cn=config
+objectClass: olcDatabaseConfig
+olcDatabase: config
+olcRootPW: {SSHA}ut93N8bpiS7GYsunUboqIaqJAWrpGCYt
+olcAccess: to * by * none
+
+# BDB definition for athen.net.au
+dn: olcDatabase=bdb,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcBdbConfig
+olcDatabase: bdb
+olcSuffix: dc=athen,dc=net,dc=au
+olcDbDirectory: /var/lib/openldap-data
+olcRootDN: cn=Manager,dc=athen,dc=net,dc=au
+olcRootPW: {SSHA}ut93N8bpiS7GYsunUboqIaqJAWrpGCYt
+olcDbIndex: uid pres,eq
+olcDbIndex: cn,sn pres,eq,approx,sub
+olcDbIndex: objectClass eq
+olcAccess: to attrs=userPassword
+    by self write
+    by anonymous auth
+    by dn.base="cn=Admin,dc=athen,dc=net,dc=au" write
+    by * none
+olcAccess: to *
+    by self write
+    by dn.base="cn=Admin,dc=athen,dc=net,dc=au" write
+    by * read
+
+
