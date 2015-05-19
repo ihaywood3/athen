@@ -1,38 +1,17 @@
 # configuration LDIF using example from OpenLDAP docs
 # loaded in using slapadd
-
-dn: cn=config
-objectClass: olcGlobal
-cn: config
-
-dn: cn=schema,cn=config
-objectClass: olcSchemaConfig
-cn: schema
-
-include: file:///etc/ldap/schema/core.ldif
-include: file:///etc/ldap/schema/inetorgperson.ldif
-
-# global database parameters
-dn: olcDatabase=frontend,cn=config
-objectClass: olcDatabaseConfig
-olcDatabase: frontend
-olcAccess: to * by * read
-
-# set a rootpw for the config database so we can bind.
-# deny access to everyone else.
-dn: olcDatabase=config,cn=config
-objectClass: olcDatabaseConfig
-olcDatabase: config
-olcRootPW: {SSHA}ut93N8bpiS7GYsunUboqIaqJAWrpGCYt
-olcAccess: to * by * none
+#dn: cn=module,cn=config
+#objectclass: olcModuleList
+#cn: module
+#olcModuleLoad: back_bdb.la
 
 # BDB definition for athen.net.au
-dn: olcDatabase=bdb,cn=config
+dn: olcDatabase=mdb,cn=config
 objectClass: olcDatabaseConfig
-objectClass: olcBdbConfig
-olcDatabase: bdb
+objectClass: olcMdbConfig
+olcDatabase: mdb
 olcSuffix: dc=athen,dc=net,dc=au
-olcDbDirectory: /var/lib/openldap-data
+olcDbDirectory: /mnt/ldap/
 olcRootDN: cn=Manager,dc=athen,dc=net,dc=au
 olcRootPW: {SSHA}ut93N8bpiS7GYsunUboqIaqJAWrpGCYt
 olcDbIndex: uid pres,eq

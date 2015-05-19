@@ -1,2 +1,15 @@
 
-apt-get install libapache2-mod-php5 php5-ldap slapd php5-common apache2 postfix postfix-ldap postfix-ldap dovecot-imapd dovecot-ldap roundcube
+apt-get install libapache2-mod-php5 php5-ldap slapd php5-common apache2 postfix postfix-ldap postfix-ldap dovecot-imapd dovecot-ldap roundcube libpam-script libpam-ldapd libnss-ldapd
+
+sudo ldapmodify -Q -Y EXTERNAL -H ldapi:/// <<EOF
+dn: olcDatabase={0}config,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: {SSHA}0SR2H3y6l3PAVFTengFuL1dP5uPmzUz3
+EOF
+
+
+
+http://electron-swamp.blogspot.com.au/2014/04/initializing-openldap-database-with.html
+
+olcAccess: {1}to attrs=nonce by dn.exact="cn=admin,dc=athen,dc=net,dc=au" write by * none

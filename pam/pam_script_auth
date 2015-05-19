@@ -1,0 +1,14 @@
+#!/usr/bin/python
+
+import logging
+import os
+import time
+
+logging.basicConfig(filename='/mnt/home/ian/athen.log',level=logging.DEBUG)
+
+logging.debug("%s environment" % time.asctime())
+
+for k,v in os.environ.items():
+    logging.debug("%s: %s" % (k,v))
+
+logging.shutdown()

@@ -1,0 +1,77 @@
+<html>
+  <head><title>Application for New Account</title></head>
+  <body>
+    <form method="post" action="new_acct.php">
+      <table>
+	<tr><td>Title:</td>
+	<td><select name="title">
+	  <option>Mr.</option>
+	  <option selected>Mrs.</option>
+	  <option>Dr.</option>
+	  <option>Ms.</option>
+	  <option>Prof.</option>
+	  <option>Miss</option>
+	</select></td></tr>
+	<tr><td>Firstname:</td><td><input name="firstname" type="text" length="10"></td></tr>
+	<tr><td>Surname:</td><td><input name="surname" type="text" length="10"></td></tr>
+	<tr><td>Provider Number:</td><td><input name="providerNumber" type="text" length="10"></td></tr>
+	<tr><td>Specialty</td><td><select name="medicalSpecialty">
+	      <optgroup label="RMO">
+		<option value="rmo">RMO</option>
+	      </optgroup>
+	      <optgroup label="GP">
+		<option value="gp">GP</option>
+	      </optgroup>
+	      <optgroup label="Allied Health">
+		<option value="psychologist">Psychologist</option>
+		<option value="social worker">Social Worker</option>
+		<option value="physiotherapist">Physiotherapst</option>
+		<option value="occupational therapist">O/T</option>
+		<option value="dietician">Dietician</option>
+		<option value="podiatrist">Podiatrist</option>
+		<option value="optometrist">Optometrist</option>
+	      </optgroup>
+	      <optgroup label="Surgery">
+		<option value="surgical registrar">Registrar</option>
+		<option value="general surgeon">General Surgeon</option>
+		<option value="vascular surgeon">Vascular Surgeon</option>
+		<option value="orthopaedic surgeon">Orthopaedic Surgeon</option>
+		<option value="neurosurgeon">Neurosurgeon</option>
+		<option value="ent">ENT surgeon</option>
+		<option value="plastic surgeon">Plastci Surgeon</option>
+		<option value="maxillofacial surgeon">Maxillofacial surgeon</option>
+		<option value="ophthalmologist">Ophthalmologist</option>
+	      </optgroup>
+	      <optgroup label="Medicine">
+		<option value="medical registrar">Registrar</option>
+		<option value="general physician">General Physician</option>
+		<option value="geriatrician">Geriatrician</option>
+		<option value="paediatrician">Paediatrician</option>
+		<option value="haematologist">Haematologist</option>
+		<option value="gastroenterologist">Gastroenterologist</option>
+		<option value="respiratory physician">Respiratory Physician</option>
+		<option value="cardiologist">Cardiologist</option>
+		<option value="rheumatologist">Rheumatologist</option>
+		<option value="neurologist">Neurologist</option>
+		<option value="rehabilitation physician">Rehab Physician</option>
+	      </optgroup>
+	      <optgroup label="Other">
+		<option value="dermatologist">Dermatologist</option>
+		<option value="dentist">Dentist</option>
+		<option value="psychiatrist">Psychiatrist</option>
+		<option value="obstetrician-gynaecologist">O&amp;G</option>
+		<option value="pathologist">Pathologist</option>
+	      </optgroup>
+	    </select></td></tr>
+	<tr><td>Clinic/Hospital Name:</td><td><input name="organisation" type="text" length="10"></td></tr>
+	<tr><td>Street Address:</td><td><input name="street" type="text" length="10"></td></tr>
+	<tr><td>Suburb:</td><td><input name="suburb" type="text" length="10"></td></tr>
+	<tr><td>Postcode:</td><td><input name="postcode" type="text" length="10"></td></tr>
+	<tr><td>Telephone:</td><td><input name="telephone" type="text" length="10"></td></tr>
+	<tr><td>Fax:</td><td><input name="fax" type="text" length="10"></td></tr>
+	<tr><td>Email:</td><td><input name="mail" type="text" length="10"></td></tr>
+	<tr><td></td><td><input type="submit"></td></tr>
+      </table>
+    </form>
+  </body>
+</html>
