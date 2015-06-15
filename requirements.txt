@@ -1,5 +1,6 @@
 
-apt-get install libapache2-mod-php5 php5-ldap slapd php5-common apache2 postfix postfix-ldap postfix-ldap dovecot-imapd dovecot-ldap roundcube libpam-script libpam-ldapd libnss-ldapd
+apt-get install apache2 slapd  apache2 postfix postfix-ldap dovecot-imapd dovecot-ldap roundcube libpam-script libpam-ldapd libnss-ldapd python-ldap
+# libapache2-mod-php5 php5-ldap php5-common 
 
 sudo ldapmodify -Q -Y EXTERNAL -H ldapi:/// <<EOF
 dn: olcDatabase={0}config,cn=config

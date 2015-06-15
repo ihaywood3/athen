@@ -1,4 +1,4 @@
-import tempfile, os, os.path, subprocess, logging, sys
+import tempfile, os, os.path, subprocess, logging, sys, ldap
 
 class Spooler:
     """A directory system for spooling files, fairly basic"""
@@ -35,9 +35,31 @@ def gpg(args,file_in=None):
 
 def exe(args,file_in=None):
     """Execute something. Log and die if there is a problem"""
-    s = subprocess.Popen(args,stderr=subprocess.PIPE,stdin=subprocess.PIPE)
+    s = subprocess.Popen(args,stderr=subprocess.PIPE,stdin=subprocess.PIPE,stdout=subprocess.PIPE)
     (out, err) = s.communicate(file_in)
     if s.returncode != 0:
         logging.critical("%r failed with code %d" % (args,s.returncode))
         logging.critical("stderr %r" % err)
         sys.exit(1)
+    return out
+
+class LDAP:
+    """Very very high level interface to the LDAP store"""
+
+    def __init__(self):
+        try:
+            self.l = ldap.open("127.0.0.1")
+            self.l.simple_bind_s("","")  # anonymous bind
+        except ldap.LDAPError:
+            logging.exception("failed to open LDAP",exc_info=True)
+            sys.exit(1)
+            
+    def search(self,query,attrs=None,max_entries=100):
+        base = "dc=athen,dc=net,dc=au"
+        scope = ldap.SCOPE_SUBTREE
+        try:
+            result = self.l.search_ext_s(base, scope, query, attrs, 0, None, None, 60, max_entries)
+            return [i[1] for i in result]
+        except ldap.LDAPError:
+            logging.exception("LDAP error on %s" % query)
+            sys.exit(1)
