@@ -14,3 +14,7 @@ EOF
 http://electron-swamp.blogspot.com.au/2014/04/initializing-openldap-database-with.html
 
 olcAccess: {1}to attrs=nonce by dn.exact="cn=admin,dc=athen,dc=net,dc=au" write by * none
+
+sudo /sbin/losetup /dev/loop0 ~/bigsecret
+sudo cryptsetup open --type plain /dev/loop0 loop0
+sudo mount /dev/dm-0 /mnt/home/ian/mnt
