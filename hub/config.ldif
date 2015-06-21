@@ -1,30 +1,26 @@
-# configuration LDIF using example from OpenLDAP docs
-# loaded in using slapadd
-#dn: cn=module,cn=config
-#objectclass: olcModuleList
-#cn: module
-#olcModuleLoad: back_bdb.la
-
-# BDB definition for athen.net.au
-dn: olcDatabase=mdb,cn=config
-objectClass: olcDatabaseConfig
-objectClass: olcMdbConfig
-olcDatabase: mdb
+dn: olcDatabase={1}mdb,cn=config
+changetype: modify
+replace: olcSuffix
 olcSuffix: dc=athen,dc=net,dc=au
-olcDbDirectory: /mnt/ldap/
-olcRootDN: cn=Manager,dc=athen,dc=net,dc=au
-olcRootPW: {SSHA}ut93N8bpiS7GYsunUboqIaqJAWrpGCYt
-olcDbIndex: uid pres,eq
-olcDbIndex: cn,sn pres,eq,approx,sub
-olcDbIndex: objectClass eq
-olcAccess: to attrs=userPassword
-    by self write
-    by anonymous auth
-    by dn.base="cn=Admin,dc=athen,dc=net,dc=au" write
-    by * none
+-
+replace: olcRootDN
+olcRootDN: cn=Admin,dc=athen,dc=net,dc=au
+-
+add: olcAccess
 olcAccess: to *
-    by self write
     by dn.base="cn=Admin,dc=athen,dc=net,dc=au" write
     by * read
+-
+add:olcRootPW
+olcRootPW: {SSHA}7Szt4K173a+cqjCnw7lmWE0MWBHyOG80
 
+dn: dc=athen,dc=net,dc=au
+changetype: add
+objectClass: domain
+dc: athen
+description: Autonomous Transport for Heath: Encrypted Network
 
+dn: cn=Admin,dc=athen,dc=net,dc=au
+changetype: add
+objectclass: person
+cn: Admin
