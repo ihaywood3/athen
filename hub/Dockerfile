@@ -7,7 +7,10 @@ RUN groupadd -r openldap && useradd -r -g openldap openldap
 RUN apt-get -y update && \ 
 LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends slapd ldap-utils apache2 python  && \
 apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-COPY *.ldif /root/
-RUN ldapadd -Q -Y EXTERNAL -H ldapi:/// -f /root/athen.ldif
-RUN ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f /root/config.ldif
+COPY *.ldif /var/lib/ldap/
+RUN su openldap -c "/usr/sbin/slapadd -n 0 -l /var/lib/ldap/athen.ldif"
+RUN /usr/sbin/slapd -h 'ldap:/// ldapi:///' -g openldap -u openldap -F /etc/ldap/slapd.d/ && /usr/bin/ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f /var/lib/ldap/config.ldif && killall slapd && sleep 5
+RUN su openldap -c "/usr/sbin/slapadd -n 1 -l /var/lib/ldap/base.ldif"
 EXPOSE 389
+ENTRYPOINT /usr/sbin/slapd -h 'ldap:/// ldapi:///' -g openldap -u openldap -F /etc/ldap/slapd.d/ -d 0
+#ENTRYPOINT /bin/bash

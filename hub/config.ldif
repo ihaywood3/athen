@@ -1,4 +1,4 @@
-dn: olcDatabase={1}mdb,cn=config
+dn: olcDatabase={1}hdb,cn=config
 changetype: modify
 replace: olcSuffix
 olcSuffix: dc=athen,dc=net,dc=au
@@ -11,16 +11,5 @@ olcAccess: to *
     by dn.base="cn=Admin,dc=athen,dc=net,dc=au" write
     by * read
 -
-add:olcRootPW
+replace: olcRootPW
 olcRootPW: {SSHA}7Szt4K173a+cqjCnw7lmWE0MWBHyOG80
-
-dn: dc=athen,dc=net,dc=au
-changetype: add
-objectClass: domain
-dc: athen
-description: Autonomous Transport for Heath: Encrypted Network
-
-dn: cn=Admin,dc=athen,dc=net,dc=au
-changetype: add
-objectclass: person
-cn: Admin

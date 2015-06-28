@@ -1,0 +1,9 @@
+dn: dc=athen,dc=net,dc=au
+objectClass: domain
+dc: athen
+description: Autonomous Transport for Heath: Encrypted Network
+
+dn: cn=Admin,dc=athen,dc=net,dc=au
+objectclass: person
+cn: Admin
+sn: Admin
