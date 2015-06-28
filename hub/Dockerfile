@@ -11,6 +11,12 @@ COPY *.ldif /var/lib/ldap/
 RUN su openldap -c "/usr/sbin/slapadd -n 0 -l /var/lib/ldap/athen.ldif"
 RUN /usr/sbin/slapd -h 'ldap:/// ldapi:///' -g openldap -u openldap -F /etc/ldap/slapd.d/ && /usr/bin/ldapmodify -Q -Y EXTERNAL -H ldapi:/// -f /var/lib/ldap/config.ldif && killall slapd && sleep 5
 RUN su openldap -c "/usr/sbin/slapadd -n 1 -l /var/lib/ldap/base.ldif"
-EXPOSE 389
+COPY www/* /var/www/
+COPY python/* /usr/lib/cgi-bin/
+COPY apache.conf/* /etc/apache2/sites-available/
+COPY athen.pem /etc/ssl/certs/
+COPY athen.key /etc/ssl/private/
+RUN chmod 400 /etc/ssl/private/athen.key
+EXPOSE 80 389 443
 ENTRYPOINT /usr/sbin/slapd -h 'ldap:/// ldapi:///' -g openldap -u openldap -F /etc/ldap/slapd.d/ -d 0
 #ENTRYPOINT /bin/bash
