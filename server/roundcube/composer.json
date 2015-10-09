@@ -1,0 +1,26 @@
+{
+    "name":		"roundcube/athen",
+    "version":		"1.0",
+    "type":"roundcube-plugin",
+    "description":	"Extra medical-specific headers while composing. Based on the custom-from plugin by R\u00e9mi Caput",
+    "keywords":		["athen", "medical", "header", "compose"],
+    "homepage":		"https://github.com/ihaywood/athen",
+    "license":		"GPL",
+    "authors":		[
+	{
+	    "name":		"Ian Haywood",
+	    "role":		"Developer"
+		}
+    ],
+    "repositories":	[
+	{
+	    "type":	"composer",
+	    "url":	"http://plugins.roundcube.net"
+	}
+    ],
+    "require":		{
+	"php":							">=5.3.0",
+	"roundcube/plugin-installer":	">=0.1.3"
+    }
+}
+athe

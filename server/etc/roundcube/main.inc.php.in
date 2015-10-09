@@ -147,15 +147,15 @@ $rcmail_config['smtp_server'] = '127.0.0.1';
 
 // SMTP port (default is 25; use 587 for STARTTLS or 465 for the
 // deprecated SSL over SMTP (aka SMTPS))
-$rcmail_config['smtp_port'] = 25;
+$rcmail_config['smtp_port'] = 587;
 
 // SMTP username (if required) if you use %u as the username Roundcube
 // will use the current username for login
-$rcmail_config['smtp_user'] = '';
+$rcmail_config['smtp_user'] = '%u';
 
 // SMTP password (if required) if you use %p as the password Roundcube
 // will use the current user's password for login
-$rcmail_config['smtp_pass'] = '';
+$rcmail_config['smtp_pass'] = '%p';
 
 // SMTP AUTH type (DIGEST-MD5, CRAM-MD5, LOGIN, PLAIN or empty to use
 // best server supported one)
@@ -303,7 +303,7 @@ $rcmail_config['username_domain'] = '';
 // %d - domain (http hostname without the first part)
 // %z - IMAP domain (IMAP hostname without the first part)
 // For example %n = mail.domain.tld, %t = domain.tld
-$rcmail_config['mail_domain'] = '';
+$rcmail_config['mail_domain'] = '%n';
 
 // Password charset.
 // Use it if your authentication backend doesn't support UTF-8.
@@ -324,7 +324,7 @@ $rcmail_config['max_group_members'] = 0;
 $rcmail_config['useragent'] = 'Roundcube Webmail/'.RCMAIL_VERSION;
 
 // use this name to compose page titles
-$rcmail_config['product_name'] = 'Roundcube Webmail';
+$rcmail_config['product_name'] = 'HOSTNAME Webmail';
 
 // try to load host-specific configuration
 // see http://trac.roundcube.net/wiki/Howto_Config for more details
@@ -411,7 +411,7 @@ $rcmail_config['no_save_sent_messages'] = false;
 // ----------------------------------
 
 // List of active plugins (in plugins/ directory)
-$rcmail_config['plugins'] = array();
+$rcmail_config['plugins'] = array('athen');
 
 // ----------------------------------
 // USER INTERFACE
