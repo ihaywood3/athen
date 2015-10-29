@@ -55,10 +55,30 @@ else
     echo /data/certificate.pem
 fi
 
+if [ ! -L /var/lib/dbconfig-common/sqlite3/roundcube/roundcube ] ; then
+    echo Database is not a link
+    if [ -f /data/roundcube.sqlite ] ; then
+	# we have our own sqlite database, so delete the fresh one and link
+	rm /var/lib/dbconfig-common/sqlite3/roundcube/roundcube
+    else
+	echo No database in /data
+	# no database, so move the fresh one made by the roundcube installer
+	mv /var/lib/dbconfig-common/sqlite3/roundcube/roundcube /data/roundcube.sqlite
+    fi
+    ln -s /data/roundcube.sqlite /var/lib/dbconfig-common/sqlite3/roundcube/roundcube
+    chmod 777 /data
+fi
+
 # get hostname form SSL cert
 HOSTNAME=`openssl x509 -in /data/certificate.pem -noout -subject | sed -e 's:.*CN=\(.*\)/.*:\1:'`
 # and substitute it into the config files
 find /etc/ -name '*.in' -print | while read file ; do
 				     sed -e s/HOSTNAME/$HOSTNAME/ $file > ${file%.in}
 				 done
+
+if [ ! -r /data/users.db ] ;then
+    sqlite3 -batch /data/users.db < /usr/lib/athen/schema.sql
+    chown www-data:www-data /data/users.db
+fi
+
 exec /usr/bin/supervisord

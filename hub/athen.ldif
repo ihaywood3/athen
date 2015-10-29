@@ -6,8 +6,8 @@ dn: cn=athen,cn=schema,cn=config
 objectClass: olcSchemaConfig
 cn: athen
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.2 
- NAME 'jabberID' 
- DESC 'RFC822-style jabber ID' 
+ NAME 'mxDomain' 
+ DESC 'domain name of mailserver' 
  EQUALITY caseIgnoreIA5Match 
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{256} ) 
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.3
@@ -38,7 +38,7 @@ olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.9
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE ) 
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.10
  NAME 'timeCreated' 
- DESC 'the time the account was used' 
+ DESC 'the time the account was registered' 
  EQUALITY generalizedTimeMatch 
  ORDERING generalizedTimeOrderingMatch 
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE )
@@ -65,12 +65,9 @@ olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.14
 olcObjectclasses: (1.3.6.1.4.1.18298.99.1.2 NAME 'athenPerson' 
  SUP (inetOrgPerson)  STRUCTURAL 
  MUST (medicalSpecialty $ status $ timeLastUsed $ timeCreated) 
- MAY (jabberID $ sipID $ providerNumber) ) 
-olcObjectclasses: (1.3.6.1.4.1.18298.99.1.3 NAME 'athenOrganization' 
+ MAY (providerNumber) ) 
+olcObjectclasses: (1.3.6.1.4.1.18298.99.1.3 NAME 'athenMailer' 
  SUP (organization)  STRUCTURAL 
- MUST (status $ timeLastUsed $ timeCreated) 
- MAY (mail) )
-olcObjectclasses: (1.3.6.1.4.1.18298.99.1.4 NAME 'athenMail' 
- STRUCTURAL 
- MUST (timeCreated $ cn $ tlsSignature $ tlsCertificate)
- MAY (ipAddress $ ip6Address $ timeLastUsed) )
+ MUST (status $ timeLastUsed $ timeCreated $ tlsSignature $ tlsCertificate $ mxDomain)
+ MAY (ipAddress $ ip6Address) )
+

@@ -13,17 +13,12 @@ postfix	postfix/main_mailer_type	select	Internet Site
 
 
 
-roundcube-core	roundcube/pgsql/app-pass	password	foo123
-roundcube-core	roundcube/app-password-confirm	password	foo123
+
 roundcube-core	roundcube/language	select	en_AU
-roundcube-core	roundcube/dbconfig-install	boolean	true
-roundcube-core	roundcube/db/app-user	string	roundcube
 roundcube-core	roundcube/reconfigure-webserver	multiselect	apache2
-roundcube-core	roundcube/pgsql/authmethod-user	select	password
-roundcube-core	roundcube/database-type	select	pgsql
-roundcube-core	roundcube/pgsql/authmethod-admin	select	ident
-roundcube-core	roundcube/db/dbname	string	roundcube
+roundcube-core	roundcube/restart-webserver	boolean false
+roundcube-core	roundcube/database-type	select	sqlite3
+roundcube-core	roundcube/hosts		string	ssl://locahost:993
 roundcube-core	roundcube/purge	boolean	false
-roundcube-core	roundcube/pgsql/method	select	unix socket
-roundcube-core	roundcube/pgsql/admin-user	string	postgres
+
 
