@@ -1,0 +1,14 @@
+#!/usr/bin/python
+
+import logging, os, sys, time
+
+logging.basicConfig(filename='/root/athen.log',level=logging.DEBUG)
+
+logging.debug("%s environment in pam_script_acct" % time.asctime())
+
+for k,v in os.environ.items():
+    logging.debug("%s: %s" % (k,v))
+
+logging.shutdown()
+
+sys.exit(0)
