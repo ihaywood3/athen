@@ -5,8 +5,8 @@ MAINTAINER Ian Haywood <ian@haywood.id.au>
 RUN groupadd -r openldap && useradd -r -g openldap openldap
 # Install OpenLDAP and ldap-utils
 RUN apt-get -y update && \ 
-LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends slapd ldap-utils apache2 python supervisor texlive-latex-base cups-client python-ldap python-flask && \
-apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+ LC_ALL=C DEBIAN_FRONTEND=noninteractive apt-get install -y --force-yes --no-install-recommends slapd ldap-utils apache2 python supervisor texlive-latex-base cups-client python-m2crypto python-ldap python-flask && \
+ apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 COPY *.ldif /var/lib/ldap/
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN mkdir -p /var/lock/apache2 /var/run/apache2 /var/run/sshd /var/log/supervisor

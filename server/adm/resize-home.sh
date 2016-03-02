@@ -3,6 +3,7 @@
 # assume mounted already
 USER=$1
 AVAIL=`df | awk -v u=/dev/mapper/$USER '$1==u {print $4}'`
+<<<<<<< HEAD
 TOTAL=`df | awk -v u=/dev/mapper/$USER '$1==u {print $2}'`
 USERTYPE=`getent passwd $USER | cut -d ':' -f 5 | cut -d ',' -f 5`
 QUOTA=250000  # 250 meg
@@ -16,6 +17,9 @@ if ["$USERTYPE" == "X" ] ;then
 fi
 if (( AVAIL > 50000 )) ; then exit ; fi  # exit if more than 50 meg available
 if (( TOTAL+50000 > QUOTA \\ ; then exit ; fi # exit if would exceed quota
+=======
+if (( AVAIL > 50 )) ; then exit ; fi  # exit if more than 50 meg available
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 LOOP=`losetup | awk -v u=/data/home/$USER.img '$6==u {print $1}'`
 umount /dev/mapper/$USER
 dd if=/dev/urandom bs=1M count=50 >> /data/home/$USER.img # add 50 meg

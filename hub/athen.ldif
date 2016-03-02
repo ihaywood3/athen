@@ -6,8 +6,8 @@ dn: cn=athen,cn=schema,cn=config
 objectClass: olcSchemaConfig
 cn: athen
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.2 
- NAME 'jabberID' 
- DESC 'RFC822-style jabber ID' 
+ NAME 'mxDomain' 
+ DESC 'domain name of mailserver' 
  EQUALITY caseIgnoreIA5Match 
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{256} ) 
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.3
@@ -38,20 +38,48 @@ olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.9
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE ) 
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.10
  NAME 'timeCreated' 
- DESC 'the time the account was used' 
+ DESC 'the time the account was registered' 
  EQUALITY generalizedTimeMatch 
  ORDERING generalizedTimeOrderingMatch 
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE )
 olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.11 
+<<<<<<< HEAD
  NAME 'nonce' 
  DESC 'Verification code hashed' 
  EQUALITY caseIgnoreIA5Match 
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{100}) 
+=======
+ NAME 'ipAddress' 
+ DESC 'IP address of a server' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{64})
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.12 
+ NAME 'ip6Address' 
+ DESC 'IPv6 address of a server' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{64})
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.13 
+ NAME 'tlsSignature' 
+ DESC 'The TLS certificate signature/fingerprint' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{128})
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.14 
+ NAME 'tlsCertificate' 
+ DESC 'the full TLS certificate' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{65536})
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 olcObjectclasses: (1.3.6.1.4.1.18298.99.1.2 NAME 'athenPerson' 
  SUP (inetOrgPerson)  STRUCTURAL 
  MUST (medicalSpecialty $ status $ timeLastUsed $ timeCreated) 
- MAY (jabberID $ sipID $ providerNumber) ) 
-olcObjectclasses: (1.3.6.1.4.1.18298.99.1.3 NAME 'athenOrganization' 
+ MAY (providerNumber) ) 
+olcObjectclasses: (1.3.6.1.4.1.18298.99.1.3 NAME 'athenMailer' 
  SUP (organization)  STRUCTURAL 
+<<<<<<< HEAD
  MUST (status $ timeLastUsed $ timeCreated $ nonce) 
  MAY (mail) ) 
+=======
+ MUST (status $ timeLastUsed $ timeCreated $ tlsSignature $ tlsCertificate $ mxDomain)
+ MAY (ipAddress $ ip6Address) )
+
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24

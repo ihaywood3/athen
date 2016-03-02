@@ -2,6 +2,7 @@
 
 . /usr/share/athen/adm/utils.sh
 
+<<<<<<< HEAD
 if [ ! -r /data/home/$USER.pem ] ;then
     exit 67  # no user
 fi
@@ -9,6 +10,13 @@ USERTYPE=`getent passwd $USER | cut -d ':' -f 5 | cut -d ',' -f 5`
 if [ "$USERTYPE" == "X" ] ; then
     exit 77 # permission denied
 fi
+=======
+USER=$1
+if [ ! -r /data/home/$USER.pem ] ;then
+    exit 67  # no user
+fi
+
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 if [ ! -d /data/spool/$USER ] ; then
     mkdir /data/spool/$USER
     chmod 700 /data/spool/$USER

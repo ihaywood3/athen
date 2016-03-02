@@ -49,9 +49,13 @@ passdb {
 # uses Name Service Switch, which is configured in /etc/nsswitch.conf.
 userdb {
   # <doc/wiki/AuthDatabase.Passwd.txt>
+<<<<<<< HEAD
   driver = passwd
+=======
+ driver = passwd
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
   # [blocking=no]
-  #args = 
+  args = 
 
   # Override fields from passwd
   #override_fields = home=/home/virtual/%u

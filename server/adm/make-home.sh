@@ -12,7 +12,10 @@ fi
 cd /data/home
 if ! grep -q $USER /etc/passwd ; then
     /usr/sbin/useradd -b /data/home -c "$GECOS" -g vmail -M -N $USER
+<<<<<<< HEAD
     cp /etc/passwd /data/passwd.bak
+=======
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 fi
 if [ ! -d /data/home/$USER ] ; then
     mkdir $USER

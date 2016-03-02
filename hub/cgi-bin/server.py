@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+<<<<<<< HEAD
 # general HTTP interface to our LDAP index server
 
 import ldap, ldap.filter
@@ -433,5 +434,14 @@ def listusers():
 if __name__ == '__main__':
     app.run(debug=True)
 
+=======
+# script for when leaf server wants to update IP address
+
+import cgi, os, ldap
+
+
+c = ldap.initialize('ldap://localhost/')
+c.simple_bind_s('cn=Admin,dc=athen,dc=net,dc=au','password')
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 
 

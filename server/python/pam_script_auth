@@ -1,14 +1,14 @@
 #!/usr/bin/python
 
-import logging
-import os
-import time
+import logging, os, sys, time
 
-logging.basicConfig(filename='/mnt/home/ian/athen.log',level=logging.DEBUG)
+logging.basicConfig(filename='/root/athen.log',level=logging.DEBUG)
 
-logging.debug("%s environment" % time.asctime())
+logging.debug("%s environment in pam_script_auth" % time.asctime())
 
 for k,v in os.environ.items():
     logging.debug("%s: %s" % (k,v))
 
 logging.shutdown()
+
+sys.exit(0)

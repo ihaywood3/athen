@@ -34,6 +34,7 @@ if [ ! -d /data/ ] ; then
    exit 1
 fi
 
+<<<<<<< HEAD
 if [ -r /data/passwd.bak -a /data/passwd.bak -nt /etc/passwd ] ; then
     cp /data/passwd.bak /etc/passwd
 fi
@@ -44,6 +45,8 @@ if [ ! -d /data/spool ] ; then
     chmod 770 /data/spool
 fi
 
+=======
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 if [ ! -r /data/htpasswd ] ; then
     echo Setting administrator password
     htpasswd -c -B /data/htpasswd admin
@@ -86,9 +89,16 @@ find /etc/ -name '*.in' -print | while read file ; do
 				     sed -e s/HOSTNAME/$HOSTNAME/ $file > ${file%.in}
 				 done
 
+<<<<<<< HEAD
 #if [ ! -r /data/users.db ] ;then
 #    sqlite3 -batch /data/users.db < /usr/lib/athen/schema.sql
 #    chown www-data:www-data /data/users.db
 #fi
+=======
+if [ ! -r /data/users.db ] ;then
+    sqlite3 -batch /data/users.db < /usr/lib/athen/schema.sql
+    chown www-data:www-data /data/users.db
+fi
+>>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 
 exec /usr/bin/supervisord
