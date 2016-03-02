@@ -42,11 +42,16 @@ olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.10
  EQUALITY generalizedTimeMatch 
  ORDERING generalizedTimeOrderingMatch 
  SYNTAX 1.3.6.1.4.1.1466.115.121.1.24 SINGLE-VALUE )
+olcAttributeTypes: ( 1.3.6.1.4.1.18298.99.2.11 
+ NAME 'nonce' 
+ DESC 'Verification code hashed' 
+ EQUALITY caseIgnoreIA5Match 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26{100}) 
 olcObjectclasses: (1.3.6.1.4.1.18298.99.1.2 NAME 'athenPerson' 
  SUP (inetOrgPerson)  STRUCTURAL 
  MUST (medicalSpecialty $ status $ timeLastUsed $ timeCreated) 
  MAY (jabberID $ sipID $ providerNumber) ) 
 olcObjectclasses: (1.3.6.1.4.1.18298.99.1.3 NAME 'athenOrganization' 
  SUP (organization)  STRUCTURAL 
- MUST (status $ timeLastUsed $ timeCreated) 
+ MUST (status $ timeLastUsed $ timeCreated $ nonce) 
  MAY (mail) ) 
