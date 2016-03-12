@@ -1,6 +1,5 @@
 #!/usr/bin/python
 
-<<<<<<< HEAD
 # general HTTP interface to our LDAP index server
 
 import ldap, ldap.filter
@@ -25,7 +24,7 @@ app = Flask(__name__)
 
 base_dn = 'dc=athen,dc=net,dc=au'
 org_fields = ['o','l','st','businessCategory','street','postalCode','telephoneNumber','facsimileTelephoneNumber','userPassword','mail','status']
-
+user_fields = ['givenName','sn','medicalSpecialty','providerNumber']
 
 def send_mail(subject, text, dvi=None):
     msg = MIMEMultipart(
@@ -115,7 +114,7 @@ def create_new_hash(password):
     return make_hash(password,"$1$20$"+make_salt())
 
 def clean_string(s):
-    """Remove LDAP-sensitive chars from a string"""
+    """Remove LDAP and other sensitive chars from a string"""
     translation_table = dict.fromkeys(map(ord, '!@#(){}%^&*|=+\n\r\t";:<>,'), None)
     return s.translate(translation_table)
 
@@ -130,6 +129,10 @@ def fold_dn(i):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route("/rationale.html")
+def rationale():
+    return render_template("rationale.html")
 
 
 @app.route('/org/search')
@@ -146,8 +149,13 @@ def searchorg():
 def showorg():
     get_ldap()
     the_dn = ldap.filter.filter_format("o=%s,",[request.args['o']])+base_dn
-    org = ldap_query(the_dn,"(objectclass=athenOrganization)",scope=ldap.SCOPE_BASE)
-    users = ldap_query(the_dn,"(objectclass=athenPerson)")
+    org = ldap_query(the_dn,"(objectclass=athenOrganization)",org_fields,scope=ldap.SCOPE_BASE)
+    users = ldap_query(the_dn,"(objectclass=athenPerson)",user_fields)
+    s = org['email']
+    if org['status'] == 'X':
+        s = "invalid"
+    s = s.replace("@"," at ")
+    org['displayEmail'] = s
     return render_template('showorg.html',org=org,users=users)
 
 @app.route('/org/new'):
@@ -161,7 +169,9 @@ def neworg():
 def load_from_form(fieldslist):
     vals = {}
     for f in fieldslist:
-        val = clean_string(request.form[f])
+        val = request.form[f]
+        if f != 'userPassword':
+            val = clean_string(val)
         if val != "":
             vals[f] = val
     return vals
@@ -187,7 +197,7 @@ def org_fields_validate(vals):
             vals['error'] = "Postcode must be four digits"
     if "telephoneNumber" in vals:
         vals['telephoneNumber'] = re.sub("[^0-9]", "", vals['telephoneNumber'])
-        m = re.match("^[0-9]{7,10}$",vals['telphoneNumber'])
+        m = re.match("^[0-9]{7,10}$",vals['telephoneNumber'])
         if not m:
             vals['error_field'] = 'telphoneNumber'
             vals['error'] = "telephone number must be 7 to 10 digits"
@@ -210,9 +220,9 @@ def neworg():
             if f == 'l': f = "suburb"
             vals["error"] = f+" is required"
             return render_template('neworg.html',**vals)
-    if vals['userPassword'] != vals['userPassword_repeat']:
+    if vals['userPassword'] != request.form['userPassword_repeat']:
         vals['error_field'] = 'userPassword_repeat'
-        vals['error'] = "passwords do not match"
+        vals['error'] = "Passwords do not match"
         return render_template('editorg.html',**vals)
     if len(vals['userPassword']) < 6:
         vals["error"] = "password must be at least 6 characters"
@@ -330,7 +340,7 @@ def confirmorg():
     
 
 
-user_fields = ['givenName','sn','medicalSpecialty','providerNumber']
+
 
 @app.route('/user/new')
 def newuser():
@@ -434,14 +444,6 @@ def listusers():
 if __name__ == '__main__':
     app.run(debug=True)
 
-=======
-# script for when leaf server wants to update IP address
 
-import cgi, os, ldap
-
-
-c = ldap.initialize('ldap://localhost/')
-c.simple_bind_s('cn=Admin,dc=athen,dc=net,dc=au','password')
->>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 
 

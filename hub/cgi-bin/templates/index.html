@@ -1,0 +1,13 @@
+{% extends "base.html" %}<html>
+{% block title %}Index{% endblock %}
+{% block body %}
+    <p>This is the mmain public server for ATHEN, the Autonomus Transport for Heath: Encrypttion Network. For what this is all about see
+      <a href="/rationale.html">here</a></p>
+    <p>Search for existing organisations:
+    <form method="get" action="/searchorg.html">
+      <input text="text" name="key" length="10" />
+    </form>
+    </p>
+    <p>
+      <a href="/org/new">Register</a> a new organisation.</p>
+{% endblock %}

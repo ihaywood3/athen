@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}
+{% if mode == "new" %}
+Create New Organisation
+{% else %}
+Edit Organisation
+{% endif %}
+{% endblock %}
+{% block body %}
+{% if mode == "new" %}
+<form action="/org/save" method="post">
+{% else %}
+<form action="/org/update" method="post">
+  {% endif %}
+
+  <p>
+    <table>
+      <tr>
+	<th>Name</th>
+	<td>
+	  {% if mode == "new" %}
+	  <input type="text" name="o" length="20" />
+	  {% else %}
+	  {{ o }}
+	  {% endif %}
+	</td>
+      </tr>
+      <tr>
+	<th>Street</th>
+	<td><input type="text" length="20" value="{{ st }}" name="st" /></td>
+      </tr>
+      <tr>
+	<th>Town</th>
+	<td><input type="text" length="20" value="{{ l }}" name="l" /></td>
+      </tr>
+      <tr>
+	<th>Postcode</th>
+	<td><input type="text" length="10" value="{{ postalCode }}" name="postalCode" /></td>
+      </tr>
+      <tr>
+	<th>Telephone</th>
+	<td><input type="text" length="20" value="{{ telephoneNumber }}" name="telephoneNumber" /></td>
+      </tr>
+      <tr>
+	<th>Fax</th>
+	<td><input type="text" length="20" value="{{ facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
+      </tr>
+      {% if mode == "edit" %}
+      <tr>
+	<th>Status</th>
+	<td><label for="status_closed"><input type="check" name="status_closed" value="yes" id="status_closed" />Mark as closed</label></td>
+      </tr>
+      {% endif %}
+      <tr>
+	<td></td>
+	<td><input type="submit" name="Submit" /></td>
+      </tr>
+    </table>
+  </p>
+</form>
+{% endblock %}
+    

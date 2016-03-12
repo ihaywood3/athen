@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Search{% endblock %}
+{% block body %}
+    <p>Search for existing organisations:
+    <form method="get" action="/searchorg.html">
+      <input text="text" name="key" length="10" />
+    </form>
+    </p>
+    <p>
+      {% if len(result) > 0 %}
+      <table><tr><th>Organisation</th><th>Town</th><th>Category</th></tr>
+	{% for row in result %}
+	<tr><td><a href="/org/show?o={{row.o|urlencode}}">{{ row.o }}</a></td><td>{{ ro.l }}</td><td>{{ row.businessCategory }}</td></tr>
+	{% endfor %}
+      </table>
+      {% else %}
+      No results found.
+      {% endif %}
+    </p>
+    <p>
+      <a href="/org/new">Register</a> a new organisation.</p>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Organisation {{ org.o }}{% endblock %}
+{% block body %}
+<p>
+<table>
+  <tr>
+    <th>Name</th>
+    <td>{{ org.o }}</td>
+  </tr>
+  <tr>
+    <th>Street</th>
+    <td>{{ org.st }}</td>
+  </tr>
+  <tr>
+    <th>Town</th>
+    <td>{{ org.l }} {{org.postalCode }}</td>
+  </tr>
+  <tr>
+    <th>Telephone</th>
+    <td>{{ org.telephoneNumber }}</td>
+  </tr>
+  <tr>
+    <th>Fax</th>
+    <td>{{ org.facsimileTelephoneNumber }}</td>
+  </tr>
+  <tr>
+    <th>Email</th>
+    <td>{{ org.displayEmail }}</td>
+  </tr>
+  <tr>
+    <th>Status</th>
+    <td>
+      {% if org['status'] == 'P' %}
+      <span style="textcolor: yellow" title="The organisation is registered but identity not confirmed">PROVISIONAL</span>
+      {% elif org['status'] == 'C' %}
+      <span style="textcolor: green" title="The organisation is registered and identity confirmed">CONFIRMED</span>
+      {% elif org['status'] == 'X' %}
+      <span style="textcolor: red" title="The organisation has requested its entry be closed">CLOSED</span>
+      {% else %}
+      Unknown status: {{ org.status }}
+      {% endif %}
+    </td>
+  </tr>
+</table>
+</p>
+
+<p><table>
+    <tr><th>Name</th><th>Surname</th><th>Profession</th></tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.givenName }}</td>
+      <td>{{ u.sn }}</td>
+      <td>{{ u.medicalSpecialty }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</p>
+
+{% endblock %}
