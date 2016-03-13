@@ -31,11 +31,11 @@
     <th>Status</th>
     <td>
       {% if org['status'] == 'P' %}
-      <span style="textcolor: yellow" title="The organisation is registered but identity not confirmed">PROVISIONAL</span>
+      <span class="provisional" title="The organisation is registered but identity not confirmed">PROVISIONAL</span>
       {% elif org['status'] == 'C' %}
-      <span style="textcolor: green" title="The organisation is registered and identity confirmed">CONFIRMED</span>
+      <span class="confirmed" title="The organisation is registered and identity confirmed">CONFIRMED</span>
       {% elif org['status'] == 'X' %}
-      <span style="textcolor: red" title="The organisation has requested its entry be closed">CLOSED</span>
+      <span class="expired" title="The organisation has requested its entry be closed">CLOSED</span>
       {% else %}
       Unknown status: {{ org.status }}
       {% endif %}

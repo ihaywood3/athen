@@ -1,10 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
+    <link rel="stylesheet" href="style.css" />
     <title>ATHEN Main Server: {% block title %}{% endblock %}</title>
 </head>
-<body>
-<h2>ATHEN Main Server: {% block title %}{% endblock %}</h2>
-  <div id="content">{% block content %}{% endblock %}</div>
-</body>
+  <body>
+    <div class="sidebar">
+      <ul>
+	{% if 'the_dn' in session %}
+	<li />Logged in as {{ session.orgname }}
+	<li /><a href="/logout">Logout</a>
+	<li /><a href="/org/edit">Edit Details</a>
+	<li /><a href="/users/list">List Users</a>
+	{% else %}
+	<li /><a href="/login">Login</a>
+	{% endif %}
+	<li /><a href="/confirm">Confirm regstration</a>
+	<li /><a href="/org/new">New Organisation</a>
+      </ul>
+    </div>
+    <div id="rightside">
+      <h2>ATHEN Main Server: {% block title %}{% endblock %}</h2>
+      <p>
+	{% with messages = get_flashed_messages() %}
+	{% if messages %}
+	<ul class=flashes>
+      {% for message in messages %}
+      <li>{{ message }}</li>
+      {% endfor %}
+	</ul>
+	{% endif %}
+	{% endwith %}
+      </p>
+      <div id="content">{% block content %}{% endblock %}</div>
+    </div>
+  </body>
 </html>

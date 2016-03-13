@@ -1,0 +1,16 @@
+{% block title %}List of Users{% endblock %}
+{% block body %}
+<p><table>
+    <tr><th>Name</th><th>Surname</th><th>Profession</th></tr>
+    {% for u in users %}
+    <tr>
+      <td>{{ u.givenName }}</td>
+      <td>{{ u.sn }}</td>
+      <td>{{ u.medicalSpecialty }}</td>
+      <td>{{ u.providerNumber }}</td>
+      <td><a href="/users/edit?cn={{u.cn|urlencode}}">Edit</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</p>
+{% end block %}

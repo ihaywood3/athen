@@ -1,0 +1,6 @@
+Organisation Name: {{o}}
+Address: {{st}}, {{l}} {{postalCode}}
+Telephone: {{telephoneNumber}}
+Fax: {{facsimileTelephoneNumber}}
+Type: {{businessCategory}}
+Email : {{mail}}

@@ -1,0 +1,25 @@
+span.provisional
+{
+    textcolor: yellow;
+}
+
+span.confirmed
+{
+    textcolor: green;
+}
+
+span.expired
+{
+    textcolor: red;
+}
+
+div.sidebar {
+    float: left;
+    width: 230px;
+    margin-left: -100%;
+    font-size: 90%;
+}
+
+div.sidebar ul {
+    list-style: none;
+}

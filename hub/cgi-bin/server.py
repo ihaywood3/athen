@@ -118,6 +118,16 @@ def clean_string(s):
     translation_table = dict.fromkeys(map(ord, '!@#(){}%^&*|=+\n\r\t";:<>,'), None)
     return s.translate(translation_table)
 
+def latexise(v):
+    """Make string safe for LaTeX"""
+    v = v.replace("\\", "BACKSSLASH")
+    for i in ["$", "%", "&", "{", "_"]:
+        v = v.replace(i, "\\"+i)
+    v = v.replace("~", "\\textasciitilde ")
+    v = v.replace(">", "\\textgreater ")
+    v = v.replace("<", "\\textless ")
+    v = v.replace("BACKSSLASH", "\\textbackslash ")
+    return v
 
 def fold_dn(i):
     dn, vals = i
@@ -232,7 +242,8 @@ def neworg():
     if vals['error'] is None:
         vals['userPassword'] = create_new_hash(vals['userPassword'])
         vals['nonce'] = make_nonce()
-        send_mail("New Organisation",render_template('invite.txt',**vals),make_dvi(render_template('invite.tex',**vals)))
+        latex_vals = {k:latexise(v) for k, v in vals.items()}
+        send_mail("New Organisation",render_template('invite.txt',**latex_vals),make_dvi(render_template('invite.tex',**latex_vals)))
         get_ldap()
         new_dn = e("o=%s,",vals['o'])+base_dn)
         # check if exists
@@ -258,7 +269,7 @@ def neworg():
 def login():
     if request.method == 'POST':
         get_ldap()
-        org = request.form["o"]
+        org = request.form["username"]
         the_dn = e("o=%s,",org)+base_dn
         res = g.ldap.search_s(the_dn,ldap.SCOPE_BASE,"{objectclass=athenOrganization)",["o","userPassword"])
         if len(res) == 0:
@@ -271,6 +282,7 @@ def login():
                 flash("Organisation/password incorrect")
             else:
                 session['the_dn'] = the_dn
+                session['orgname'] = org
                 flash("Logged in successfully")
                 return redirect(url_for('index'))
     return render_template('login.html')
@@ -279,6 +291,8 @@ def login():
 def logout():
     # remove the username from the session if it's there
     session.pop('the_dn', None)
+    session.pop('orgname', None)
+    flash('Logged out successfully')
     return redirect(url_for('index'))
 
 @app.route('/org/edit'):
@@ -438,7 +452,7 @@ def listusers():
         flash("You must log in for this page")
         return redirect(url_for('login'))
     get_ldap()
-    res = ldap_query(the_dn,"(objectclass=athenPerson}",['cn',"sn","medicalSpecialty","givenName"])
+    res = ldap_query(the_dn,"(objectclass=athenPerson}",['cn',"sn","medicalSpecialty","givenName","providerNumber"])
     return render_template('listusers.html',users=res)
 
 if __name__ == '__main__':

@@ -1,15 +1,14 @@
-dn: olcDatabase={1}hdb,cn=config
+dn: olcDatabase={1}mdb,cn=config
 changetype: modify
 replace: olcSuffix
 olcSuffix: dc=athen,dc=net,dc=au
 -
 replace: olcRootDN
-olcRootDN: cn=Admin,dc=athen,dc=net,dc=au
+olcRootDN: cn=admin,dc=athen,dc=net,dc=au
 -
-add: olcAccess
-olcAccess: to *
-    by dn.base="cn=Admin,dc=athen,dc=net,dc=au" write
-    by * read
--
-replace: olcRootPW
-olcRootPW: {SSHA}7Szt4K173a+cqjCnw7lmWE0MWBHyOG80
+replace: olcAccess
+olcAccess: {0}to attrs=userPassword by * none
+olcAccess: {1}to attrs=nonce by * none
+olcAccess: {2}to * by dn.base="cn=admin,dc=athen,dc=net,dc=au" write by * read
+
+
