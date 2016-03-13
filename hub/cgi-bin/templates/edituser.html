@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}
+{% if mode == "new" %}
+Create New User
+{% else %}
+Edit user
+{% endif %}
+{% endblock %}
+{% block body %}
+{% if mode == "new" %}
+<form action="/user/save" method="post">
+{% else %}
+<form action="/user/update" method="post">
+  {% endif %}
+
+  <p>
+    <table>
+      {% if mode == "edit" %}
+      <tr>
+	<th>Name</th>
+	<td>{{ givenName }} {{ sn }}</td>
+      </tr>
+      {% else %}
+      <tr>
+	<th>Firstname</th>
+	<td>
+	  <input type="text" name="givenName" length="20" />
+	</td>
+      </tr>
+      <tr>
+	<th>Surname</th>
+	<td>
+	  <input type="text" name="sn" length="20" />
+	</td>
+      </tr>
+      {% endif %}
+      <tr>
+	<th>Speciality/Profession</th>
+	<td><input type="text" length="20" value="{{ medicalSpecialty }}" name="medicalSpecialty" /></td>
+      </tr>
+      <tr>
+	<th>Medicare Provider Number</th>
+	<td><input type="text" length="20" value="{{ providerNumber }}" name="providerNumber" /></td>
+      </tr>
+      <tr>
+	<td></td>
+	<td><input type="submit" name="Submit" /></td>
+      </tr>
+    </table>
+  </p>
+</form>
+{% endblock %}
+    
