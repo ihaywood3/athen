@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/static/style.css" />
     <title>ATHEN Main Server: {% block title %}{% endblock %}</title>
 </head>
   <body>
@@ -20,7 +20,7 @@
       </ul>
     </div>
     <div id="rightside">
-      <h2>ATHEN Main Server: {% block title %}{% endblock %}</h2>
+      <h2>ATHEN Main Server: {{ self.title() }}</h2>
       <p>
 	{% with messages = get_flashed_messages() %}
 	{% if messages %}
@@ -32,7 +32,7 @@
 	{% endif %}
 	{% endwith %}
       </p>
-      <div id="content">{% block content %}{% endblock %}</div>
+      <div id="content">{% block body %}{% endblock %}</div>
     </div>
   </body>
 </html>

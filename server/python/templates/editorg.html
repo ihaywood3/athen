@@ -8,18 +8,21 @@ Edit Organisation
 {% endblock %}
 {% block body %}
 {% if mode == "new" %}
-<form action="/org/save" method="post">
+<form action="/org/save" method="post" enctype="application/x-www-form-urlencoded">
 {% else %}
-<form action="/org/update" method="post">
+<form action="/org/update" method="post" enctype="application/x-www-form-urlencoded">
   {% endif %}
 
   <p>
+    {% if error != "" %}
+    <span class="error">{{ error }}</span></p><p>
+    {% endif %}
     <table>
       <tr>
 	<th>Name</th>
 	<td>
 	  {% if mode == "new" %}
-	  <input type="text" name="o" length="20" />
+	  <input type="text" name="o" length="20" value="{{ o }}" />
 	  {% else %}
 	  {{ o }}
 	  {% endif %}
@@ -44,6 +47,27 @@ Edit Organisation
       <tr>
 	<th>Fax</th>
 	<td><input type="text" length="20" value="{{ facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
+      </tr>
+      <tr>
+	<th>Type</th>
+	<td>
+	  <select name="businessCategory">
+	    <option />General Practice
+	    <option />Specialist Practice
+	    <option />Hospital
+	    <option />Legal firm
+	    <option />Police
+	    <option />Disability NGO
+	    <option />Child Protection
+	</td>
+      </tr>
+      <tr>
+	<th>Password</th>
+	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
+      </tr>
+      <tr>
+	<th>Password (repeat)</th>
+	<td><input type="password" length="20" value="{{ userPassword_repeat }}" name="userPassword_repeat" /></td>
       </tr>
       {% if mode == "edit" %}
       <tr>

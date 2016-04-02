@@ -7,6 +7,7 @@ apt-get install -y --no-install-recommends slapd ldap-utils apache2 python texli
 ldapadd -Y EXTERNAL -H ldapi:/// -f athen.ldif
 ldapmodify -Y EXTERNAL -H ldapi:/// -f config.ldif 
 ldapadd -x -D "cn=admin,dc=athen,dc=net,dc=au" -W -f base.ldif # will ask for password again here
+openssl req -new -newkey rsa:2048 -days 1070 -nodes -x509 -keyout private.key -out server.crt
 #cp athen.pem /etc/ssl/certs/
 #cp athen.key /etc/ssl/private/
 #chmod 400 /etc/ssl/private/athen.key

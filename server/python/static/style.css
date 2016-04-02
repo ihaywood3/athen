@@ -1,16 +1,23 @@
 span.provisional
 {
-    textcolor: yellow;
+    color: yellow;
 }
 
 span.confirmed
 {
-    textcolor: green;
+    color: green;
 }
 
 span.expired
 {
-    textcolor: red;
+    color: red;
+}
+
+
+span.error
+{
+    color: red;
+    font-weight: bold;
 }
 
 div.sidebar {
