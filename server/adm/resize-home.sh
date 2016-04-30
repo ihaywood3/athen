@@ -3,28 +3,15 @@
 # assume mounted already
 USER=$1
 AVAIL=`df | awk -v u=/dev/mapper/$USER '$1==u {print $4}'`
-<<<<<<< HEAD
-TOTAL=`df | awk -v u=/dev/mapper/$USER '$1==u {print $2}'`
-USERTYPE=`getent passwd $USER | cut -d ':' -f 5 | cut -d ',' -f 5`
-QUOTA=250000  # 250 meg
-if [ "$USERTYPE" == "P" ] ; then
-    # provisional user
-    QUOTA=100000  # 100 meg
+if (( AVAIL > 50 )) ; then
+    echo More than 50 meg, but resizing anyway
+    # exit # exit if more than 50 meg available
 fi
-if ["$USERTYPE" == "X" ] ;then
-    # restrcited user: shouldn't really get here
-    exit 77
-fi
-if (( AVAIL > 50000 )) ; then exit ; fi  # exit if more than 50 meg available
-if (( TOTAL+50000 > QUOTA \\ ; then exit ; fi # exit if would exceed quota
-=======
-if (( AVAIL > 50 )) ; then exit ; fi  # exit if more than 50 meg available
->>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
-LOOP=`losetup | awk -v u=/data/home/$USER.img '$6==u {print $1}'`
+LOOPDEV=`losetup | awk -v u=/home/athen/home/$USER.img '$6==u {print $1}'`
 umount /dev/mapper/$USER
-dd if=/dev/urandom bs=1M count=50 >> /data/home/$USER.img # add 50 meg
-losetup -c $LOOP
+dd if=/dev/urandom bs=1M count=50 >> /home/athen/home/$USER.img # add 50 meg
+losetup -c $LOOPDEV
 cryptsetup resize /dev/mapper/$USER
-e2fsck -f /dev/mapper/$USER
+e2fsck -fp /dev/mapper/$USER
 resize2fs /dev/mapper/$USER
-mount /dev/mapper/$USER /data/home/$USER
+mount /dev/mapper/$USER /home/athen/home/$USER

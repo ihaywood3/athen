@@ -1,3 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 
 # dud script to please libpam-script
+cd `dirname $0`
+
+. ./utils.sh
+
+echo "pam_script_acct"
+set

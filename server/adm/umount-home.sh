@@ -1,8 +1,13 @@
 #!/bin/bash
+set -e
+
+DIR=`dirname $0`
 
 USER=$1
 
+. $DIR/utils.sh
+
+scan_loop $USER
 umount /dev/mapper/$USER
 cryptsetup close $USER
-LOOP=`losetup | awk -v u=/data/home/$USER.img '$6==u {print $1}'`
-losetup -d $LOOP
+losetup -d $LOOPDEV

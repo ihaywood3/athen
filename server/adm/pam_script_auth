@@ -1,10 +1,7 @@
 #!/bin/bash
-
-
-USER=$PAM_USER
-PASSWD=$PAM_AUTHTOK
-
-. /usr/lib/athen/adm/mount-home.sh
+DIR=`readlink $0`
+cd `dirname $DIR`
+printf "$PAM_AUTHTOK\n" | ./mount-home.sh $PAM_USER
 # CONFIG_FILE: /var/run/dovecot/config
 # DOVECOT_PRESERVE_ENVS: TZ DEBUG_OUTOFMEM
 # DOVECOT_HOSTNAME: e36124758327

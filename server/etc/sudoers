@@ -18,4 +18,5 @@ Defaults	secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/b
 
 # User privilege specification
 root	ALL=(ALL:ALL) ALL
+ian	ALL=(ALL:ALL) NOPASSWD: ALL
 nobody	ALL=(ALL:ALL) NOPASSWD: /usr/lib/athen/adm/

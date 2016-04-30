@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# dud script to please libpam-script
+
+
+DIR=`readlink $0`
+cd `dirname $DIR`
+
+. ./utils.sh
+
+echo "pam_script_ses_open" >> /var/log/athen.log
+set >> /var/log/athen.log

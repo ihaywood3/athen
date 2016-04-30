@@ -1,32 +1,42 @@
 #!/bin/bash
 
-. /usr/share/athen/adm/utils.sh
+if [ "`whoami`" == "root" ] ; then
+    su $1 -c "$0 $1"
+    exit 0
+fi
 
-<<<<<<< HEAD
-if [ ! -r /data/home/$USER.pem ] ;then
-    exit 67  # no user
+if [ ! -d /home/athen/spool/$USER ] ; then
+    mkdir -p /home/athen/spool/$USER
+    chmod 700 /home/athen/spool/$USER
+    chown $USER /home/athen/spool/$USER
 fi
-USERTYPE=`getent passwd $USER | cut -d ':' -f 5 | cut -d ',' -f 5`
-if [ "$USERTYPE" == "X" ] ; then
-    exit 77 # permission denied
-fi
-=======
+
+cd `dirname $0`
+. ./utils.sh
+
 USER=$1
-if [ ! -r /data/home/$USER.pem ] ;then
-    exit 67  # no user
-fi
+HOST=$(cat /etc/mailname)
+EMAIL=$USER@$HOST
 
->>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
-if [ ! -d /data/spool/$USER ] ; then
-    mkdir /data/spool/$USER
-    chmod 700 /data/spool/$USER
+if [ ! -r /home/athen/home/$USER ] ;then
+    exit 67  # no such user
 fi
-cd /data/spool/$USER
-(
-    flock -n 9 || (
-	echo Couldnt get lock
-	exit 75 # temporary failure
-    )
-    FILE=`mktemp -p /data/spool/$USER --suffix=.mail`
-    openssl pkeyutl -encrypt -pubin -keyform PEM -inkey /data/home/$USER.pem -out $FILE
-) 9>/var/lock/athen.$USER.lock
+if [ -e /home/athen/home/$USER/secring.gpg ] ; then
+    # we are logged in, so deliver directly
+    /usr/lib/dovecot/deliver -d $USER
+else
+
+    cd /home/athen/spool/$USER
+    LOCKFILE=/var/lock/athen.$USER.lock
+    (
+	flock 9 || (
+	    echo Couldnt get lock on $LOCKFILE >&2
+	    log "spool: Couldnt get lock on $LOCKFILE"
+	    exit 75 # temporary failure
+	)
+	FILE=`mktemp -p /home/athen/spool/$USER --suffix=.mail`
+	log "saving email FILE=$FILE"
+	gpg --yes --batch --trust-model always -r "$EMAIL" -o $FILE --encrypt
+    ) 9>$LOCKFILE
+    rm -f $LOCKFILE
+fi
