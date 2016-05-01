@@ -10,21 +10,34 @@ import threading, os, os.path, sqlite3, logging, sys
 PORT=62347
 DBDEF=[
     'CREATE TABLE config (key text, value text)',
-    'CREATE TABLE files (path text, origin text, ref text)']
+    'CREATE TABLE files (path text, origin text, ref text)',
+    '''
+    CREATE TABLE log (
+       stamp text default current_timestamp, 
+       severity integer, notes text)'''
+    ]
 
 
 QUIT_NOTIFY=0  # if need to quit move to "quit soft"
 QUIT_SOFT=1  # quit when convient for the client
 QUIT_NOW=2 # quite using sys.exit()
 
+TRY_PATHS=['C:\\Program Files\\ATHEN',
+           'C:\\ATHEN',
+           '/var/lib/athen/']
+
 class DB:
 
-    def __init__(self,dbpath):
-        if os.access(dbpath,os.R_OK):
-            db_exist = True
-            if not os.access(dbpath,os.W_OK):
-                logging.critical("Cannot write to config DB")
-                sys.exit(1)
+    def __init__(self):
+        dbpath = None
+        for i in TRY_PATHS:
+            if os.access(i,os.R_OK):
+                dbpath = i
+        if dbpath is None:
+            logging.critical("Cannot find a path for DB")
+            sys.exit(1)
+        dbpath = os.path.join(dbpath,'config.sq3')
+        db_exist = os.access(dbpath,os.R_OK)
         self.db = sqlite3.connect(dbpath)
         if not db_exist:
             c = self.db.cursor()
@@ -33,22 +46,32 @@ class DB:
             self.db.commit()
 
 
-    def __setitem__(self, key, value):
+    def set_config(self, key, value):
         c = self.db.cursor()
-        c.execute("SELECT 1 FROM config WHERE key=?",(key,))
-        if c.rowcount == 0:
-            c.execute("INSERT INTO config(key, value) VALUES (?, ?)",(key, value))
+        c.execute("SELECT key FROM config WHERE key=?",(key,))
+        if len(c.fetchall()) == 0:
+            logging.error("INSERT {} {}".format(key, value))
+            c.execute("INSERT INTO config (key, value) VALUES (?, ?)",(key, value))
         else:
+            logging.error("UPDATE {} {} rowcount {}".format(key, value, c.rowcount))
             c.execute("UPDATE config SET value=? WHERE key=?",(value, key))
         c.close()
         self.db.commit()
-        self.config[key] = value
 
-    def __getitem__(self, key):
+    def get_config(self, key):
         c = self.db.cursor()
         c.execute("SELECT value FROM config WHERE key=?",(key,))
         if c.rowcount == 0: return None
         r = c.fetchone()[0]
+        c.close()
+        return r
+    
+    def get_all_configs(self):
+        r = {}
+        c = self.db.cursor()
+        c.execute("SELECT key, value FROM config")
+        for i in c.fetchall():
+            r[i[0]] = i[1]
         c.close()
         return r
 
@@ -70,6 +93,24 @@ class DB:
         c.execute("DELETE FROM files WHERE path=?", (path,))
         c.close()
         self.db.commit()
+        
+    def add_log(self, level, notes):
+        c = self.db.cursor()
+        c.execute("INSERT INTO log (stamp, severity, notes) VALUES (datetime('now', 'localtime'), ?, ?)", (level, notes))
+        c.close()
+        self.db.commit()
+        
+    def get_log(self):
+        c = self.db.cursor()
+        c.execute("SELECT stamp, severity, notes FROM log ORDER BY stamp DESC LIMIT 100")
+        r = c.fetchall()
+        c.close()
+        return r
+    
+    def trim_log(self):
+        c = self.db.cursor()
+        c.execute("DELETE FROM log WHERE stamp < date('now','-1 months')")
+        c.close()
 
 class UDPServer:
         
