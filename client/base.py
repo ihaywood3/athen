@@ -5,7 +5,7 @@ config can be reloaded by UDP signal
 """
 
 from socket import *
-import threading, os, os.path, sqlite3, logging, sys
+import threading, os, os.path, sqlite3, logging, sys, time
 
 PORT=62347
 DBDEF=[
@@ -26,6 +26,15 @@ TRY_PATHS=['C:\\Program Files\\ATHEN',
            'C:\\ATHEN',
            '/var/lib/athen/']
 
+class PermanentError(Exception):
+    """An error that won't get fixed until the user changes the settings"""
+    pass
+    
+class TempError(Exception):
+    """An error that might not recur if we try again"""
+    pass
+
+
 class DB:
 
     def __init__(self):
@@ -35,7 +44,8 @@ class DB:
                 dbpath = i
         if dbpath is None:
             logging.critical("Cannot find a path for DB")
-            sys.exit(1)
+            raise Exception("Cannot find path for DB")
+        self.dbpath = dbpath
         dbpath = os.path.join(dbpath,'config.sq3')
         db_exist = os.access(dbpath,os.R_OK)
         self.db = sqlite3.connect(dbpath)
@@ -94,9 +104,14 @@ class DB:
         c.close()
         self.db.commit()
         
-    def add_log(self, level, notes):
+    def add_log(self, level, notes, dbtime=None):
         c = self.db.cursor()
-        c.execute("INSERT INTO log (stamp, severity, notes) VALUES (datetime('now', 'localtime'), ?, ?)", (level, notes))
+        if dbtime is None:
+            dbtime = "datetime('now', 'localtime')"
+        else: 
+            dbtime = "'{}'".format(dbtime)
+        sql = "INSERT INTO log (stamp, severity, notes) VALUES ({}, ?, ?)".format(dbtime)
+        c.execute(sql, (level, notes))
         c.close()
         self.db.commit()
         
@@ -168,3 +183,49 @@ class UDPClient:
     
     def quit(self):
         self.sock.sendto("QUIT\r\n",('127.0.0.1',PORT))
+
+
+MAP_LEVELS={logging.DEBUG: 0, logging.INFO: 0, logging.ERROR: 1, logging.WARN: 1, logging.CRITICAL: 2, logging.FATAL: 2}
+
+class SQLiteHandler(logging.Handler):
+    """
+    Logging handler for SQLite.
+    Based on Vinay Sajip's DBHandler class (http://www.red-dove.com/python_logging.html)
+                   VALUES (
+                        '%(dbtime)s',
+                        '%(name)s',
+                        %(levelno)d,
+                        '%(levelname)s',
+                        '%(msg)s',
+                        '%(args)s',
+                        '%(module)s',
+                        '%(funcName)s',
+                        %(lineno)d,
+                        '%(exc_text)s',
+                        %(process)d,
+                        '%(thread)s',
+                        '%(threadName)s'
+                   );
+                   """
+
+    
+    def __init__(self, db):
+    
+        logging.Handler.__init__(self)
+        self.db = db
+
+    def formatDBTime(self, record):
+        record.dbtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
+
+    def emit(self, record):
+       
+        # Use default formatting:
+        self.format(record)
+        # Set the database time up:
+        self.formatDBTime(record)
+        level = MAP_LEVELS.get(record.levelno, 0)
+        notes = "{} {} {} {}".format(record.msg,record.module, record.funcName, record.lineno)
+        if record.exc_info:
+            notes += " "+logging._defaultFormatter.formatException(record.exc_info)
+        # Insert log record:
+        self.db.add_log(level, notes, dbtime=record.dbtime)

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from Tkinter import *
-import logging, pdb
+import logging, pdb, time
 import ttk
 
 import base
@@ -48,6 +48,7 @@ def save_config():
     for k in vars:
         s = vars[k].get()
         db.set_config(k, s)
+    db.set_config('config_time',time.asctime())
         
 def quit():
     db.add_log(0, "GUI client exited")
