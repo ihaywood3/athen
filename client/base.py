@@ -91,6 +91,13 @@ class DB:
         for i in c.fetchall():
             yield {'path':i[0],'origin':i[1],'ref':i[2]}
         c.close()
+        
+    def check_file(self,path):
+        c = self.db.cursor()
+        c.execute("SELECT path, origin, ref FROM files WHERE path=?", (path,))
+        r = c.fetchone()
+        c.close()
+        return r
 
     def add_file(self, path, origin, ref):
         c = self.db.cursor()
@@ -210,7 +217,6 @@ class SQLiteHandler(logging.Handler):
 
     
     def __init__(self, db):
-    
         logging.Handler.__init__(self)
         self.db = db
 
@@ -224,7 +230,7 @@ class SQLiteHandler(logging.Handler):
         # Set the database time up:
         self.formatDBTime(record)
         level = MAP_LEVELS.get(record.levelno, 0)
-        notes = "{} {} {} {}".format(record.msg,record.module, record.funcName, record.lineno)
+        notes = "{} {}({}):{}".format(record.msg,record.module, record.funcName, record.lineno)
         if record.exc_info:
             notes += " "+logging._defaultFormatter.formatException(record.exc_info)
         # Insert log record:
