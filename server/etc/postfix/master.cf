@@ -21,7 +21,6 @@ submission inet n       -       -       -       -       smtpd -v
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
   -o milter_macro_daemon_name=ORIGINATING
-<<<<<<< HEAD
   -o content_filter=filter:dummy
 filter    unix  -       n       n       -       10      pipe
     flags=Rq user=filter null_sender=
@@ -29,14 +28,6 @@ filter    unix  -       n       n       -       10      pipe
 localhost:10025	inet  n     -       -       -       -       smtpd -v
   -o smtp_tls_security_level = encrypt
   -o mynetworks=127.0.0.1/32
-=======
-#  -o content_filter=filter:dummy
-#filter    unix  -       n       n       -       10      pipe
-#    flags=Rq user=filter null_sender=
-#    argv=/path/to/script -f ${sender} -- ${recipient}
-secure	unix  n     -       -       -       -       smtpd -v
-  -o smtp_tls_security_level = encrypt
->>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
 #smtps     inet  n       -       -       -       -       smtpd
 #  -o syslog_name=postfix/smtps
 #  -o smtpd_tls_wrappermode=yes

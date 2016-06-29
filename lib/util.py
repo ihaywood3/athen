@@ -1,12 +1,11 @@
 """general utilities for use in the HUB and the server code"""
 
-import ldap, ldap.filter
-import hashlib, binascii, os, re, random, os.path, sys, smtplib, email, email.utils, time, tempfile
+
+import hashlib, binascii, os, re, random, os.path, sys, smtplib, email, email.utils, time, tempfile, socket
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 from email.mime.text import MIMEText
 import email.utils
-import collections
 
 SWEARWORDS = ['SHIT', 'FUCK', 'CUNT', 'TWAT']
 
@@ -15,11 +14,26 @@ DEFAULT_FROM="ian@haywood.id.au"
 DEFAULT_SERVER="haywood.id.au"
 
 
-def emptydict(d=None):
-    if d is None: d = {}
-    return collections.defaultdict(lambda x: "", d)
+class SMTP(smtplib.SMTP):
+    """A simple subclass to support SMTP over UNIX sockets
+    If the port is set to -1, then the host is considered
+    a UNIX path"""
+    
+    def _get_socket(self, host, port, timeout):
+        "if port=-1, then host is actually a UNIX socket path"
+        if port == -1:
+            # use UNIX socket type
+            sock = socket.socket(socket.AF_UNIX,socket.SOCK_STREAM)
+            if timeout != socket._GLOBAL_DEFAULT_TIMEOUT:
+                sock.settimeout(float(timeout))
+            sock.connect(host)
+            return sock
+        else:
+            # just use the ancestor for TCP/IP
+            smtplib._get_socket(self, host, port, timeout)
+            
 
-def send_mail(subject, text, dvi=None):
+def send_mail(subject, text, dvi=None, host=None):
     msg = MIMEMultipart()
     msg['From']=DEFAULT_FROM
     msg["To"]=DEFAULT_TO
@@ -33,7 +47,9 @@ def send_mail(subject, text, dvi=None):
             Content_Disposition='attachment; filename="invite.dvi"',
             name="invite.dvi"
             ))
-    smtp = smtplib.SMTP(DEFAULT_SERVER)
+    if host is None:
+        host=DEFAULT_SERVER
+    smtp = SMTP(host)
     smtp.starttls()
     smtp.sendmail(DEFAULT_FROM, [DEFAULT_TO], msg.as_string())
     smtp.close()
@@ -59,98 +75,7 @@ def make_nonce():
         nonce = ''.join(random.choice(alphas) for dum in range(1,10))
     return nonce
 
-    
-def ldap_time():
-    return time.strftime("%Y%m%d%H%M%SZ",time.gmtime())
 
-def e(x,*args):
-    return ldap.filter.filter_format(x,args)
-
-class Ldap_DN:
-    """Wrapper around LDAP doamin paths
-    """
-
-    def __init__(self, dn):
-        """Initialise from a standard DN notation foo=bar,foo=bar"""
-        if type(dn) is list:
-            self.dn = dn
-        else:
-            self.dn = [tuple(i.split('=',1)) for i in dn.split(",")]
-
-    def __str__(self):
-        """Return to standard notation"""
-        return ",".join([e("%s=%s",i[0],i[1]) for i in self.dn])
-
-    def __getitem__(self, x):
-        """Return first domain component matching field name x"""
-        for a, b in self.dn:
-            if x == a:
-                return b
-        return None
-
-    def add(self, a, b):
-        """add domain path section field a value b"""
-        return Ldap_DN([(a,b)]+self.dn)
-
-    def sub(self, n):
-        """Lop off n domain path components from the end
-        i.e. go up the directory tree"""
-        return Ldap_DN(self.dn[n:])
-
-class LDAP:
-    """a thin wrapper around the LDAP connector
-    """
-
-    def __init__(self, local=False, password=""):
-        if local:
-            self.conn = ldap.initialize('ldapi:///')
-            self.conn.simple_bind_s('cn=admin,dc=athen,dc=net,dc=au',password)
-        else:
-            self.conn = ldap.initialize("ldaps://hub.athen.email/")
-
-    def query(self,base_dn,query=None,*args,**kwargs):
-        if query is None:
-            node = True
-            query = "(&)" # the "absolute true" LDAP expression
-        if 'node' in kwargs and kwargs['node'] is True:
-            scope = ldap.SCOPE_BASE
-        else:
-            scope = ldap.SCOPE_SUBTREE
-        if 'fields' in kwargs:
-            fields = kwargs['fields']
-        else:
-            fields = ["*"]
-        query = ldap.filter.filter_format(query,args)
-        res = self.conn.search_s(str(base_dn),scope,query,fields)
-        return map(self.fold_dn,res)
-
-    def fold_dn(self,i):
-        dn, vals = i
-        vals2 = emptydict()
-        for k, v in vals.items():
-            if len(v) == 1:
-                vals2[k] = v[0]
-            else:
-                vals2[k] = v
-        vals2['dn'] = Ldap_DN(dn)
-        return vals2
-
-    def add(self,dn, data):
-        modlist = []
-        for k, v in data.items():
-            if type(v) is list:
-                modlist.append((k, v))
-            else:
-                modlist.append((k, [str(v)]))
-        self.conn.add_s(str(dn),modlist)
-
-    def modify(self,dn, data):
-        modlist = []
-        for k, v in data.items():
-            if not type(v) is list:
-                v = [str(v)]
-            modlist.append((ldap.MOD_REPLACE,k,v))
-        self.conn.modify_s(str(dn), modlist)
 
     
 class AthenError(Exception):
@@ -210,9 +135,24 @@ def create_new_hash(password):
     return make_hash(password,"$1$20$"+make_salt())
 
 def clean_string(s):
-    """Remove LDAP and HTML-sensitive chars from a string"""
-    translation_table = dict.fromkeys(map(ord, '!#(){}^&*|=+\n\r\t";:<>,'), None)
-    return s.translate(translation_table)
+    """Remove LDAP and HTML-sensitive chars from a string, plus any other whitespace or weirdness"""
+    translation_table = dict.fromkeys(map(ord, '()&*,/|="<>'), None)
+    s = s.translate(translation_table)
+    s = filter(lambda x: ord(x) > 31 and ord(x) < 126, s)
+    return s
+
+def make_username(u):
+    """Make a free string suitable for a email/UNIX username"""
+    u = lower(u)
+    u = u.replace(" ",".")
+    u = u.replace("-","_")
+    u2 = u.replace("..",".").replace('__','_')
+    while u2 != u:
+        u = u2
+        u2 = u.replace("..",".")
+    allowed = 'abcdefghijklmnopqrstuvwzyz._'
+    u = filter(lambda x: x in allowed,u)
+    return u
 
 def latexise(v):
     """Make string safe for LaTeX"""

@@ -11,6 +11,12 @@ PORT=62347
 DBDEF=[
     'CREATE TABLE config (key text, value text)',
     'CREATE TABLE files (path text, origin text, ref text)',
+    '''CREATE TABLE sent (path text, 
+        dest text, 
+        ref text, 
+        status text, 
+        comment text, 
+        stamp text default current_timestamp)''',
     '''
     CREATE TABLE log (
        stamp text default current_timestamp, 
@@ -76,6 +82,20 @@ class DB:
         c.close()
         return r
     
+    def get_ref_number(self):
+        """Return a five-digit monotonically increasing number for the 
+        local system"""
+        n = self.get_config('lab_reference')
+        if n is None: 
+            n = 0
+        else:
+            n = int(n)
+        n = n+1
+        if n > 99999:
+            n = 1  # loop back to one
+        self.set_config('lab_reference',str(n))
+        return "{:0>5}".format(n)
+    
     def get_all_configs(self):
         r = {}
         c = self.db.cursor()
@@ -102,6 +122,21 @@ class DB:
     def add_file(self, path, origin, ref):
         c = self.db.cursor()
         c.execute("INSERT INTO files (path, origin, ref) VALUES (?, ?, ?)", (path, origin, ref))
+        c.close()
+        self.db.commit()
+        
+    def add_sent_file(self, path, dest, ref):
+        c = self.db.cursor()
+        c.execute("INSERT INTO sent_files (path, dest, ref, status) VALUES (?, ?, ?, 1)", (path, dest, ref))
+        c.close()
+        self.db.commit()
+        
+    def set_file_status(self, ref, status, comment):
+        c = self.db.cursor()
+        c.execute("SELECT * FROM sent_files WHERE ref=?",(ref,))
+        if c.fetchone() is None:
+            raise Exception("No sent file for {}".format(ref))
+        c.execute("UPDATE sent_files SET status=?, comment=? WHERE ref=?", (status, comment, ref))
         c.close()
         self.db.commit()
 
@@ -132,7 +167,9 @@ class DB:
     def trim_log(self):
         c = self.db.cursor()
         c.execute("DELETE FROM log WHERE stamp < date('now','-1 months')")
+        c.execute("DELETE FROM sent_files WHERE stamp < date('now','-1 months')")
         c.close()
+        self.db.commit()
 
 class UDPServer:
         

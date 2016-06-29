@@ -54,7 +54,7 @@ $rcmail_config['sql_debug'] = false;
 $rcmail_config['imap_debug'] = false;
 
 // Log LDAP conversation to <log_dir>/ldap or to syslog
-$rcmail_config['ldap_debug'] = false;
+$rcmail_config['ldap_debug'] = true;
 
 // Log SMTP conversation to <log_dir>/smtp or to syslog
 $rcmail_config['smtp_debug'] = false;
@@ -143,19 +143,19 @@ $rcmail_config['messages_cache'] = false;
 // %d - domain (http hostname $_SERVER['HTTP_HOST'] without the first part)
 // %z - IMAP domain (IMAP hostname without the first part)
 // For example %n = mail.domain.tld, %t = domain.tld
-$rcmail_config['smtp_server'] = 'tls://127.0.0.1';
+$rcmail_config['smtp_server'] = '127.0.0.1';
 
 // SMTP port (default is 25; use 587 for STARTTLS or 465 for the
 // deprecated SSL over SMTP (aka SMTPS))
-$rcmail_config['smtp_port'] = 587;
+$rcmail_config['smtp_port'] = 10025;
 
 // SMTP username (if required) if you use %u as the username Roundcube
 // will use the current username for login
-$rcmail_config['smtp_user'] = '%u';
+//$rcmail_config['smtp_user'] = '%u';
 
 // SMTP password (if required) if you use %p as the password Roundcube
 // will use the current user's password for login
-$rcmail_config['smtp_pass'] = '%p';
+//$rcmail_config['smtp_pass'] = '%p';
 
 // SMTP AUTH type (DIGEST-MD5, CRAM-MD5, LOGIN, PLAIN or empty to use
 // best server supported one)
@@ -171,7 +171,7 @@ $rcmail_config['smtp_auth_pw'] = null;
 // Hostname to give to the remote server for SMTP 'HELO' or 'EHLO' messages 
 // Leave this blank and you will get the server variable 'server_name' or 
 // localhost if that isn't defined. 
-$rcmail_config['smtp_helo_host'] = '';
+$rcmail_config['smtp_helo_host'] = 'localhost';
 
 // SMTP connection timeout, in seconds. Default: 0 (no limit)
 // Note: There's a known issue where using ssl connection with
@@ -219,7 +219,7 @@ $rcmail_config['message_cache_lifetime'] = '10d';
 // enforce connections over https
 // with this option enabled, all non-secure connections will be redirected.
 // set the port for the ssl connection as value of this option if it differs from the default 443
-$rcmail_config['force_https'] = false;
+$rcmail_config['force_https'] = true;
 
 // tell PHP that it should work as under secure connection
 // even if it doesn't recognize it as secure ($_SERVER['HTTPS'] is not set)
@@ -229,7 +229,7 @@ $rcmail_config['use_https'] = false;
 
 // Allow browser-autocompletion on login form.
 // 0 - disabled, 1 - username and host only, 2 - username, host, password
-$rcmail_config['login_autocomplete'] = 0;
+$rcmail_config['login_autocomplete'] = 1;
 
 // Forces conversion of logins to lower case.
 // 0 - disabled, 1 - only domain part, 2 - domain and local part.
@@ -757,7 +757,7 @@ $rcmail_config['prefer_html'] = true;
 // 0 - Never, always ask
 // 1 - Ask if sender is not in address book
 // 2 - Always show inline images
-$rcmail_config['show_images'] = 0;
+$rcmail_config['show_images'] = 1;
 
 // open messages in new window
 $rcmail_config['message_extwin'] = false;
@@ -866,7 +866,7 @@ $rcmail_config['delete_junk'] = false;
 // 0 = ask the user, 1 = send automatically, 2 = ignore (never send or ask)
 // 3 = send automatically if sender is in addressbook, otherwise ask the user
 // 4 = send automatically if sender is in addressbook, otherwise ignore
-$rcmail_config['mdn_requests'] = 0;
+$rcmail_config['mdn_requests'] = 1;
 
 // Return receipt checkbox default state
 $rcmail_config['mdn_default'] = 0;

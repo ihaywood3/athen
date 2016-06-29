@@ -1,14 +1,13 @@
 #!/bin/bash
 
-if [ "`whoami`" == "root" ] ; then
-    su $1 -c "$0 $1"
-    exit 0
-fi
-
 if [ ! -d /home/athen/spool/$USER ] ; then
     mkdir -p /home/athen/spool/$USER
     chmod 700 /home/athen/spool/$USER
     chown $USER /home/athen/spool/$USER
+fi
+
+if [ "`whoami`" == "root" ] ; then
+    su $1 -c "$0 $1" && exit 0
 fi
 
 cd `dirname $0`
@@ -21,7 +20,7 @@ EMAIL=$USER@$HOST
 if [ ! -r /home/athen/home/$USER ] ;then
     exit 67  # no such user
 fi
-if [ -e /home/athen/home/$USER/secring.gpg ] ; then
+if [ -e /home/athen/home/$USER/private.key ] ; then
     # we are logged in, so deliver directly
     /usr/lib/dovecot/deliver -d $USER
 else
@@ -36,7 +35,7 @@ else
 	)
 	FILE=`mktemp -p /home/athen/spool/$USER --suffix=.mail`
 	log "saving email FILE=$FILE"
-	gpg --yes --batch --trust-model always -r "$EMAIL" -o $FILE --encrypt
+	openssl smime -encrypt -outform DER -stream -out $FILE /home/athen/$USER.pem
     ) 9>$LOCKFILE
     rm -f $LOCKFILE
 fi

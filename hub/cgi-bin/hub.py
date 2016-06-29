@@ -15,10 +15,11 @@ from flask import Flask, session, redirect, url_for, escape, request, render_tem
 
 sys.path.append('../../lib')
 from util import *
+import config
 
 app = Flask(__name__)
 
-base_dn = Ldap_DN('dc=athen,dc=net,dc=au')
+
 
 mail_text_template ="""
 Organisation Name: {{o}}
@@ -204,6 +205,15 @@ def confirmorg():
             except AthenError as e:
                 flash(e.err)
     return render_template("confirm.html")
+
+@app.route('/recv_key',methods=["POST"])
+def recvkey():
+    """Receive a GnuPG key"""
+    try:
+        get_ldap()
+        mailer_dn = calc_mxdomain(request)
+        
+
 
 if __name__ == '__main__':
     app.run(debug=True,ssl_context=('/home/ian/athen/hub/cgi-bin/server.crt','/home/ian/athen/hub/cgi-bin/private.key'))

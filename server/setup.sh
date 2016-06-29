@@ -44,15 +44,22 @@ if [ ! -h /usr/share/libpam-script/pam_script_acct ] ; then
     ln -s $DIR/adm/pam_script_acct /usr/share/libpam-script/pam_script_acct
 fi
 
-#/usr/sbin/a2enmod ssl ; /usr/sbin/a2ensite default-ssl
+#/usr/sbin/a2enmod ssl ; /usr/sbin/a2ensite default-ssl; php5enmod mcrypt
+
 cp -f /etc/services /var/spool/postfix/etc/services
 cp -f /etc/resolv.conf /var/spool/postfix/etc
+
+
 
 if [ ! -d /home/athen ] ; then
     groupadd -g 2002 athen ; useradd -g 2002 -m -u 2002 -s /bin/bash athen
     groupadd -g 2001 vmail ; useradd -g 2001 -m -u 2001 -s /bin/bash vmail
 fi
 
+if [ ! -d /var/log/athen ] ; then
+    mkdir /var/log/athen
+    chown athen:athen /var/log/athen
+fi
 
 # set some specific permissions for dovecot LDA logging
 touch /var/log/dovecot-lda-errors.log

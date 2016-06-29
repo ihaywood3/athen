@@ -43,8 +43,5 @@ inet_protocols = all
 
 smtpd_sasl_type = dovecot
 smtpd_sasl_path = private/auth
-<<<<<<< HEAD
 
-mailbox_command = spool-mail.sh
-=======
->>>>>>> 4cd1bd19cb47a08274b0afedb732e72e48e7cc24
+mailbox_command = /usr/lib/athen/adm/spool-mail.sh

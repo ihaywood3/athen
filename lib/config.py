@@ -1,5 +1,5 @@
 # configuration file
-# remember it is Python code, so True not true, string smust be quoted
+# remember it is Python code, so True not true, strings must be quoted
 
 
 # the password for logging onto the LDAP server (usually what you entered during installation)
@@ -19,10 +19,12 @@ owner = ""
 # the secret key for Flask, always change to some random characters
 secret_key = "skfjalosfkepw0scl"
 
-# DONT CHANGE BELOW HERE UNLESS YOU KNOW WHAT YOU ARE DOING
-import util
+sql_path = '/home/ian/athen.sqlite'
 
-base_dn = util.Ldap_DN("dc=nodomain")
+# DONT CHANGE BELOW HERE UNLESS YOU KNOW WHAT YOU ARE DOING
+import util, myldap
+
+base_dn = myldap.Ldap_DN('dc=athen,dc=email')
 ldap_user = "cn=admin,dc=nodomain"
 certs=('/home/ian/athen/hub/tests/cert.pem','/home/ian/athen/hub/tests/key.pem')
 upload_file='/home/ian/athen.upload.dat'

@@ -1,7 +1,15 @@
 #!/bin/bash
 DIR=`readlink $0`
 cd `dirname $DIR`
-printf "$PAM_AUTHTOK\n" | ./mount-home.sh $PAM_USER
+
+./utils.sh
+./cryptoloop.sh
+
+if [ ! -e /home/athen/home/$PAM_USER/private.key ] ; then
+  mount_home.sh "$PAM_USER" "$PAM_AUTHTOK"
+else
+  exec ./check-password.py
+fi 
 # CONFIG_FILE: /var/run/dovecot/config
 # DOVECOT_PRESERVE_ENVS: TZ DEBUG_OUTOFMEM
 # DOVECOT_HOSTNAME: e36124758327

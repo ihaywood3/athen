@@ -5,7 +5,6 @@ if [ "`whoami`" == "root" ] ; then
 else
     cd `dirname $0`
     . ./utils.sh
-    . ./gpg.sh
     USER=$1
     UHOME=/home/athen/home/$USER
     cd /home/athen/spool/$USER
@@ -17,7 +16,7 @@ else
 	    exit 1
 	)
 	for i in *.mail ; do
-	    gpg --batch --yes --no-tty --homedir $UHOME --decrypt $i | \
+	    openssl smime -decrypt -in $i -inform DER -recip $UHOME.pem -inkey $UHOME/private.key | \
 		/usr/lib/dovecot/deliver -d $USER  && \
 		rm -f $i
 	done

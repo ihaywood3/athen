@@ -24,6 +24,8 @@ Expire-Date: 5y
 EOF
     gpg --homedir $UHOME --export $EMAIL | gpg --import
     KEYID=$(gpg --with-colons --homedir $UHOME --list-public-keys $EMAIL | awk -F : '$1 == "pub" { print $5}')
+    cat $KEYID > $UHOME/keyid.txt
+    chown $1:vmail keyid.txt
     #gpg --keyserver athen.mail --send-keys $KEYID
 }
 

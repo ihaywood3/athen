@@ -4,8 +4,7 @@
 The web interface of the local ("leaf") ATHEN mailserver
 """
 import sys, os, ldap
-__location__ = os.path.realpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__)))
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 
 from flask import Flask, session, redirect, url_for, escape, request, render_template, g, flash
@@ -14,10 +13,40 @@ app = Flask(__name__)
 
 sys.path.append('../../lib')
 from util import *
-import config
-import user
-import submit
+import config, store, submit, myldap
 
+
+mail_text_template ="""
+Organisation Name: {{o}}
+Address: {{street}}, {{l}} {{postalCode}} {{st}}
+Telephone: {{telephoneNumber}}
+Fax: {{facsimileTelephoneNumber}}
+Type: {{businessCategory}}
+Email : {{mail}}
+"""
+
+mail_latex_template = """
+\\documentclass[12pt]{letter}
+\\signature{Dr. Ian Haywood}
+\\address{Ian Haywood \\\\ ATHEN \\\\ 64 Robertson Dr\\\\ Mornington VIC 3931\\\\ Tel. 0359867709}
+\\begin{document}
+\\begin{letter}{The Practice Manager\\\\ {{o}} \\\\ {{street}} \\\\ {{l}} {{postalCode}} {{st}} }
+\\opening{Dear Madam/Sir,}
+
+Your organisation has been registered on the ATHEN network using this postal address.
+
+Your registration code is \\texttt{ {{nonce}} }
+
+If you wish to register, please go to \\texttt{https://athen.org/}, click on `Register' and enter in the code above.
+
+if you did not request registration, plase check if someone in your organisation did register and ask them for more details.
+
+If you have no idea what this letter is about, please contact me on the above address.
+
+\\closing{Yours faithfully,}
+\\end{letter}
+\\end{document}
+"""
 
 schema = {
     "org": [
@@ -45,7 +74,7 @@ def get_ldap():
     current application context.
     """
     if not hasattr(g, 'ldap'):
-        g.ldap = LDAP(local=True,password=config.password)
+        g.ldap = myldap.LDAP(local=True,password=config.password)
         #g.remote = LDAP()  # LDAP connection to remote public server
     return g.ldap
 
@@ -81,7 +110,7 @@ def showorg():
     the_dn = config.base_dn.add("o",request.args['o'])
     org = g.ldap.query(the_dn,"(objectclass=athenOrganisation)",node=True)[0]
     users = g.ldap.query(the_dn,"(objectclass=athenPerson)")
-    s = org['mail']
+    s = org.mail
     if org['status'] == 'X':
         s = "invalid"
     s = s.replace("@"," at ")
@@ -99,6 +128,14 @@ def neworg():
             return redirect(url_for('index'))       
     return render_template('editorg.html',mode='new',error_field="",data=emptydict())
 
+def send_to_shell_daemon(uid,passwd,org):
+    # we know uid and org won't have | in them, password might so last
+    passwd = passwd.replace("P","P1")
+    passwd = passwd.replace("|","P0")
+    cmd = "NEWUSER|{}|{}|{}\n".format(uid,org,passwd)
+    with open("/tmp/athen.control.fifo","w") as f:
+        f.write(cmd)
+
 @app.route('/org/save',methods=['GET','POST'])
 def saveorg():
     if not config.public_registration:
@@ -110,20 +147,31 @@ def saveorg():
             return redirect(url_for('index'))  
     try:
         data = validate_fields(request,'new',schema['org'])
-        # check if exists
-        res = g.ldap.query(config.base_dn,"(&(o=%s)(objectclass=athenOrganisation))",data['o'],fields=["o"])
-        if len(res) > 0:
-            raise AthenError('Organisation of that name already exists',"o",data)
-        submit.upload(data,'new','org',app.logger)
-        data['userPassword'] = request.form['userPassword']
-        if data['userPassword'] != request.form['userPassword_repeat']:
+        #submit.upload(data,'new','org',app.logger)
+        passwd = request.form['userPassword']
+        if passwd != request.form['userPassword_repeat']:
             raise AthenError('Passwords do not match','userPassword_repeat',data)
-        if len(data['userPassword']) < 6:
+        if len(passwd) < 6:
             raise AthenError("Password must be at least 6 characters","userPassword",data)
-        data['userPassword'] = create_new_hash(data['userPassword'])
+        uid = make_username(data['o'])
+        u = store.User(uid)
+        if u.user_exists():
+            raise AthenError("Organisation of similar name exists","o",data)
         get_ldap()
         new_dn = config.base_dn.add("o",data["o"])
-        check_mail(data)
+        # check if exists
+        res = g.ldap.query(config.base_dn,"(&(|(o=%s)(mail=%s))(objectclass=athenOrganisation))",data['o'],data['mail'],fields=["o"])
+        if len(res) > 0:
+            raise AthenError('Organisation of that name already exists',"o",data)
+        # ok error-checking is done if we get here
+        send_to_shell_daemon(uid,passwd,data["o"])
+        passwd = create_new_hash(passwd)
+        nonce = make_nonce()
+        data['mail'] = uid+"@"+config.domain
+        u.add(nonce,1,passwd)
+        latex_data = {k:latexise(v) for k, v in data.items()}
+        latex_data['nonce'] = nonce
+        send_mail("New Organisation",render_template_string(mail_text_template,**data),make_dvi(render_template_string(mail_latex_template,**latex_data)))
         data['status'] = "P" # provisional
         data['timeCreated'] = data['timeLastUsed'] = ldap_time()
         data['objectclass'] = ['organization','athenOrganisation']
@@ -134,14 +182,25 @@ def saveorg():
         flash(e.err)
         return render_template('editorg.html',mode='new',error_field=e.field,data=e.data)
 
+def get_org_dn(org):
+    """get the full DN of the named organisation
+    assumed org has been created: succeed or throw an exception"""
+    res = g.ldap.query(config.base_dn,"(&(o=%s)(objectclass=athenOrganisation))",data['o'],fields=["o"])
+    if len(res) == 0:
+        raise AthenError("Organisation {} not found".format(org),"o",{"o":org})
+    if len(res) != 1:
+        raise AthenError("Organisation {} has multiple LDAP entries WHICH SHOULD NEVER HAPPEN".format(org),"o",{"o":org})
+    return res[0]['dn']
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         get_ldap()
         org = request.form["username"]
-        u = useer.User()
+        u = store.User(org)
         if u.login(org,request.form['password']):
             session['user'] = u
+            u.dn = get_org_dn(org)
             flash("Logged in successfully")
             return redirect(url_for('index'))
         else:
@@ -161,7 +220,7 @@ def editorg():
         flash("You must log in for this page")
         return redirect(url_for('login'))
     get_ldap()
-    res = g.ldap.quiery(session['user'].dn)[0]
+    res = g.ldap.query(session['user'].dn)[0]
     return render_template('editorg.html',mode='edit',error_field="",data=res)
 
 @app.route('/org/update',methods=['POST'])
@@ -174,7 +233,7 @@ def updateorg():
         data = validate_fields(request,'edit',schema['org'])
         if request.form.get("status_closed", "no") == "yes":
             data['status'] = 'X'
-        submit.upload(data,'edit','org',app.logger)
+        #submit.upload(data,'edit','org',app.logger)
         data['timeLastUsed'] = ldap_time()
         g.ldap.modify(session['user'].dn,data)
         flash("Organisation record modified")
@@ -261,6 +320,7 @@ def updateuser():
         flash(e.err)
         return render_template('edituser.html',mode='edit',error_field=e.field,data=e.data)  
 
+
 @app.route('/user/list')
 def listusers():
     if not 'user' in session:
@@ -269,6 +329,27 @@ def listusers():
     get_ldap()
     res = g.ldap.query(session['user'].dn,"(objectclass=athenPerson}",fields=['cn',"sn","medicalSpecialty","givenName","providerNumber"])
     return render_template('listusers.html',users=res)
+
+@app.route('/org/confirm',methods=["GET","POST"])
+def confirmorg():
+    if request.method == "POST":
+        try: 
+            nonce = clean_string(request.form.get('nonce',''))
+            org = clean_string(request.form.get('o',''))
+            if org == '': raise AthenError("Organisation required","o",{})
+            if len(nonce) != 10: raise AthenError("Key is not valid","nonce",{"nonce":nonce,"o":org})
+            nonce = nonce.upper()
+            u = store.User(make_username(org))
+            if nonce != u.get('nonce'): raise AthenError("Key is not valid","nonce",{"o":org})
+            get_ldap()
+            the_dn = get_org_dn(org)
+            g.ldap_modify(the_dn,{'status':"C",'timeLastUsed':ldap_time()})
+            send_mail('Confirmed organisation',"{} has confirmed".format(org))
+            flash("{} has been validated".format(org))
+        except AthenError as e:
+            flash(e.err)
+    return render_template("confirm.html")
+
 
 if __name__ == '__main__':
     app.run(debug=True)

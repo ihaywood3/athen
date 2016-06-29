@@ -4,30 +4,20 @@ Custom-From README file
 Overview
 --------
 
-This plugin adds a blue button to the compose screen, next to the identities
-selection dropdown. By clicking it, a textbox will replace the dropdown,
-allowing you to enter whatever you want as sender value (it must be a valid
-"From:" header field value, though).
+This plugin adds special features for ATHEN to Roundcube
 
-When replying to an e-mail sent to you through an address not in your
-identities list, plugin will automatically fire and set "From:" header to the
-address the original e-mail was sent to.
 
-Install (with Composer):
-------------------------
+Install
+-------
 
-Execute `composer require roundcube/custom-from` from your RoundCube install
-folder.
 
-Install (manually):
--------------------
+apt-get install roundcube roundcube-sqlite3 roundcube-plugins apache2
+a2enmod ssl
+a2ensite default-ssl
 
-Clone repository content to a `custom_from` folder inside your RoundCube
-`plugins` directory, so that file `custom_from.php` file can be found at
-`<RoundCube install folder>/plugins/custom_from/custom_from.php`.
+move into /etc/roundcube/plugins/athen
 
-cd <RoundCube install folder>
-git clone https://github.com/r3c/CustomFrom.git plugins/custom_from/
+sudo php5enmod mcrypt
 
 Then add a reference to this plugin in RoundCube plugins list located in
 `<RoundCube install folder>config/main.inc.php` configuration file (update the

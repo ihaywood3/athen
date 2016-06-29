@@ -28,6 +28,10 @@ class Emailer(imap.Emailer):
     
     def wait(self,timeout):
         win32event.WaitForSingleObject(self.hWaitStop, int(timeout*1000))
+        
+    def split_paths(self, path):
+        return path.split(';')
+        
 
 class aservice(win32serviceutil.ServiceFramework):
    
