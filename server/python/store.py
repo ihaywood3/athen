@@ -5,20 +5,23 @@ import config, util
 import sqlite3
 import os, os.path
 
-
-
-db_exists = os.path.exists(config.sql_path)
-db = sqlite3.connect(config.sql_path)
-
-if not db_exists:
-    cur = db.cursor()
-    cur.execute("""create table users (
-    uid text,
-    nonce text,
-    crypted boolean,
-    password text)""")
-    cur.close()
-    db.commit()
+def init_db(debug=False,sql_path=None):
+    global db
+    db_exists = False
+    if debug:
+        db = sqlite3.connect(sql_path)
+    else:
+        db_exists = os.path.exists(config.sql_path)
+        db = sqlite3.connect(config.sql_path)
+    if not db_exists:
+        cur = db.cursor()
+        cur.execute("""create table users (
+        uid text,
+        nonce text,
+        crypted boolean,
+        password text)""")
+        cur.close()
+        db.commit()
 
 def add_user(uid,nonce,encrypted,password):
     cur = db.cursor()

@@ -73,7 +73,7 @@ olcObjectClasses: (1.3.6.1.4.1.18298.99.1.2 NAME 'athenPerson'
  MAY (providerNumber $ timeLastUsed $ timeCreated) ) 
 olcObjectClasses: (1.3.6.1.4.1.18298.99.1.1 NAME 'athenOrganisation'
  SUP (organization)  STRUCTURAL 
- MUST (status $ nonce) 
+ MUST (status) 
  MAY (mail $ timeLastUsed $ timeCreated) ) 
 olcObjectclasses: (1.3.6.1.4.1.18298.99.1.3 NAME 'athenMailer'
  STRUCTURAL 

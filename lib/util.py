@@ -30,7 +30,7 @@ class SMTP(smtplib.SMTP):
             return sock
         else:
             # just use the ancestor for TCP/IP
-            smtplib._get_socket(self, host, port, timeout)
+            return smtplib.SMTP._get_socket(self, host, port, timeout)
             
 
 def send_mail(subject, text, dvi=None, host=None):
@@ -108,7 +108,7 @@ def validate_fields(request,mode,schema):
         else:
             if mode == 'new' and required:
                 raise AthenError(nice_name+" is required", k, emptydict(data))
-    return emptydict(data)
+    return data
     
 
 
@@ -126,8 +126,15 @@ def make_hash(password,stub):
     algo = int(fields[1])
     algo_names = ['invalid','sha256','sha512']
     salt = fields[3]
+    salt2 = binascii.unhexlify(salt)
     reps = int(fields[2])*10000
-    dk = hashlib.pbkdf2_hmac(algo_names[algo],bytes(password),binascii.unhexlify(salt),reps)
+    try: 
+        dk = hashlib.pbkdf2_hmac(algo_names[algo],bytes(password),salt2,reps)
+    except AttributeError:
+        # FIXME: not available =< 2.7.8 so our own version here
+        dk = bytes(password)
+        for i in range(0,reps):
+            dk = hashlib.sha512(dk+salt2).digest()
     h = binascii.hexlify(dk)
     return "$"+str(algo)+"$"+str(reps)+"$"+salt+"$"+h+"$"
 
@@ -143,7 +150,7 @@ def clean_string(s):
 
 def make_username(u):
     """Make a free string suitable for a email/UNIX username"""
-    u = lower(u)
+    u = u.lower()
     u = u.replace(" ",".")
     u = u.replace("-","_")
     u2 = u.replace("..",".").replace('__','_')

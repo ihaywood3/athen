@@ -3,6 +3,7 @@ An LDAP wrapper that is a bit more Pythonic and easier to manage than the base i
 """
 
 import ldap, ldap.filter, time
+import config
 
 FIELD_CONVERSIONS = [('organization', 'o'), ('surname', 'sn'), ('cn', 'commonName')]
 
@@ -95,6 +96,9 @@ class Ldap_Row:
             if name == v: name = c
         return name
     
+    def delete(self):
+        self.conn.delete(self.dn)
+    
 class LDAP:
     """a thin wrapper around the LDAP connector
     """
@@ -102,13 +106,13 @@ class LDAP:
     def __init__(self, local=False, password=""):
         if local:
             self.conn = ldap.initialize('ldapi:///')
-            self.conn.simple_bind_s('cn=admin,dc=athen,dc=net,dc=au',password)
+            self.conn.simple_bind_s('cn=admin,dc=athen,dc=email',password)
         else:
             self.conn = ldap.initialize("ldaps://athen.email/")
 
     def query(self,query_base=None,query=None,*args,**kwargs):
         if query_base is None:
-            query_base = base_dn
+            query_base = config.base_dn
         if query is None:
             node = True
             query = "(&)" # the "absolute true" LDAP expression
@@ -135,3 +139,7 @@ class LDAP:
         if type(modlist) is dict:
                 modlist = [(ldap.MOD_REPLACE, k, makelist(v)) for k, v in modlist.items()]
         self.conn.modify_s(str(dn), modlist)
+        
+    def delete(self, dn):
+        self.conn.delete_s(str(dn))
+        

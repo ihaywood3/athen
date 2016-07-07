@@ -7,7 +7,7 @@ import sys, os, ldap
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 
-from flask import Flask, session, redirect, url_for, escape, request, render_template, g, flash
+from flask import Flask, session, redirect, url_for, escape, request, render_template, g, flash, render_template_string
 
 app = Flask(__name__)
 
@@ -35,13 +35,13 @@ mail_latex_template = """
 
 Your organisation has been registered on the ATHEN network using this postal address.
 
-Your registration code is \\texttt{ {{nonce}} }
+Your registration code is\\texttt{ {{nonce}} }
 
 If you wish to register, please go to \\texttt{https://athen.org/}, click on `Register' and enter in the code above.
 
-if you did not request registration, plase check if someone in your organisation did register and ask them for more details.
+If you did not request registration, plase check if someone in your organisation did register and ask them for more details.
 
-If you have no idea what this letter is about, please contact me on the above address.
+If you still have no idea what this letter is about, please contact me on the above address.
 
 \\closing{Yours faithfully,}
 \\end{letter}
@@ -159,6 +159,7 @@ def saveorg():
             raise AthenError("Organisation of similar name exists","o",data)
         get_ldap()
         new_dn = config.base_dn.add("o",data["o"])
+        data['mail'] = uid+"@"+config.domain
         # check if exists
         res = g.ldap.query(config.base_dn,"(&(|(o=%s)(mail=%s))(objectclass=athenOrganisation))",data['o'],data['mail'],fields=["o"])
         if len(res) > 0:
@@ -167,13 +168,12 @@ def saveorg():
         send_to_shell_daemon(uid,passwd,data["o"])
         passwd = create_new_hash(passwd)
         nonce = make_nonce()
-        data['mail'] = uid+"@"+config.domain
         u.add(nonce,1,passwd)
         latex_data = {k:latexise(v) for k, v in data.items()}
         latex_data['nonce'] = nonce
         send_mail("New Organisation",render_template_string(mail_text_template,**data),make_dvi(render_template_string(mail_latex_template,**latex_data)))
         data['status'] = "P" # provisional
-        data['timeCreated'] = data['timeLastUsed'] = ldap_time()
+        data['timeCreated'] = data['timeLastUsed'] = myldap.ldap_time()
         data['objectclass'] = ['organization','athenOrganisation']
         g.ldap.add(new_dn,data)
         flash('New organisation saved successfully')
@@ -352,7 +352,8 @@ def confirmorg():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    store.init_db(debug=False)
+    app.run(debug=False)
 
 
 
