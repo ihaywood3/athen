@@ -47,16 +47,19 @@ class Ldap_DN:
         """Lop off n domain path components from the end
         i.e. go up the directory tree"""
         return Ldap_DN(self.dn[n:])
+    
+    def __repr__(self):
+        return "<LDAP DN: {}>".format(str(self))
 
 class Ldap_Row:
     """Wrapper around rows"""
     
     def __init__(self, the_row, conn):
         self.conn = conn
-        self.dn, self.vals = the_row
+        dn, self.vals = the_row
         self.dn = Ldap_DN(dn)
         self.nvals = {}
-        for k, v in vals.items():
+        for k, v in self.vals.items():
             k = self.normalise_field_name(k)
             if len(v) == 1:
                 v = v[0]
@@ -90,14 +93,17 @@ class Ldap_Row:
         self.conn.modify(self.dn,self.modlist)
         self.modlist = []
         
-    def normalise_names(self, name):
-        name = lower(name)
+    def normalise_field_name(self, name):
+        name = name.lower()
         for v, c in FIELD_CONVERSIONS:
             if name == v: name = c
         return name
     
     def delete(self):
         self.conn.delete(self.dn)
+        
+    def __repr__(self):
+        return "<Ldap_Row: {}, Vals: {}>".format(repr(self.dn), repr(self.nvals))
     
 class LDAP:
     """a thin wrapper around the LDAP connector

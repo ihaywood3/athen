@@ -1,0 +1,25 @@
+<html>
+<head><title>Creating New Organisation</title></head>
+<body>
+<p><progress id="created_progress" max=100 value=0></p>
+<p><span id="desc">Starting...</span></p>
+<p><span id="error_text" class="error"></span></p>
+<script>
+function setProgress(n,msg)
+{
+    var bar = document.getElementById("created_progress");
+    var desc = document.getElementById("desc");
+ 
+    bar.value = n;
+    desc.innerHTML= msg+" ("+n+"%)";
+}
+
+function setError(msg)
+{
+    var error_span = document.getElementById("error_text");
+
+    error_span.innerHTML = msg;
+
+}
+</script>
+

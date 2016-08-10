@@ -2,13 +2,17 @@
 DIR=`readlink $0`
 cd `dirname $DIR`
 
-./utils.sh
-./cryptoloop.sh
+. ./utils.sh
+log "pam_script_auth"
+. ./cryptoloop.sh
 
 if [ ! -e /home/athen/home/$PAM_USER/private.key ] ; then
-  mount_home.sh "$PAM_USER" "$PAM_AUTHTOK"
+  mount_home "$PAM_USER" "$PAM_AUTHTOK"
+  ./unspool-mail.sh "$PAM_USER" &
+  disown
 else
-  exec ./check-password.py
+  log "doing pythonic password check for $PAM_USER"
+  exec python check-password.py
 fi 
 # CONFIG_FILE: /var/run/dovecot/config
 # DOVECOT_PRESERVE_ENVS: TZ DEBUG_OUTOFMEM

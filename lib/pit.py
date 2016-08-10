@@ -101,3 +101,10 @@ def make(input):
     s = re.sub(r"{(.{8})}", lambda m: subst(input,m.group(1)), template)
     s = s.replace("\n","\r\n") # use Internet/Windows style newlines
     return s
+
+def extract_addressee(pit):
+    m  = re.search(r"123.*: *([^ ]+)", pit)
+    if m:
+        return m.group(1).strip()
+    else:
+        return None

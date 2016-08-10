@@ -1,28 +1,33 @@
 #!/bin/bash
 
+# postfix should set $USER
+
+cd `dirname $0`
+. ./utils.sh
+
+HOST=$(cat /etc/mailname)
+
 if [ ! -d /home/athen/spool/$USER ] ; then
     mkdir -p /home/athen/spool/$USER
     chmod 700 /home/athen/spool/$USER
     chown $USER /home/athen/spool/$USER
 fi
 
-if [ "`whoami`" == "root" ] ; then
-    su $1 -c "$0 $1" && exit 0
-fi
+# we shouldn't need to do this but just in case
+#if [ "`whoami`" == "root" ] ; then
+#    su $1 -c "$0 $USER" && exit 0
+#fi
 
-cd `dirname $0`
-. ./utils.sh
 
-USER=$1
-HOST=$(cat /etc/mailname)
-EMAIL=$USER@$HOST
+log "delivery script for $USER"
 
-if [ ! -r /home/athen/home/$USER ] ;then
+if [ ! -r /home/athen/home/$USER.img ] ;then
     exit 67  # no such user
 fi
 if [ -e /home/athen/home/$USER/private.key ] ; then
     # we are logged in, so deliver directly
-    /usr/lib/dovecot/deliver -d $USER
+    log "homedir is mounted, passing straight to Dovecot"
+    exec /usr/lib/dovecot/deliver -d $USER
 else
 
     cd /home/athen/spool/$USER
@@ -34,8 +39,8 @@ else
 	    exit 75 # temporary failure
 	)
 	FILE=`mktemp -p /home/athen/spool/$USER --suffix=.mail`
-	log "saving email FILE=$FILE"
-	openssl smime -encrypt -outform DER -stream -out $FILE /home/athen/$USER.pem
+	log "saving email to temp FILE=$FILE"
+	openssl smime -encrypt -outform DER -stream -out $FILE /home/athen/home/$USER.pem
     ) 9>$LOCKFILE
     rm -f $LOCKFILE
 fi

@@ -5,7 +5,7 @@ config can be reloaded by UDP signal
 """
 
 from socket import *
-import threading, os, os.path, sqlite3, logging, sys, time
+import threading, os, os.path, sqlite3, logging, sys, time, Queue
 
 PORT=62347
 DBDEF=[
@@ -43,19 +43,21 @@ class TempError(Exception):
 
 class DB:
 
-    def __init__(self):
-        dbpath = None
-        for i in TRY_PATHS:
-            if os.access(i,os.R_OK):
-                dbpath = i
-        if dbpath is None:
-            logging.critical("Cannot find a path for DB")
-            raise Exception("Cannot find path for DB")
-        self.dbpath = dbpath
-        dbpath = os.path.join(dbpath,'config.sq3')
-        db_exist = os.access(dbpath,os.R_OK)
-        self.db = sqlite3.connect(dbpath)
-        if not db_exist:
+    def __init__(self,dbfile=None,debug=False):
+        self.dblock = threading.Lock()
+        if dbfile is None:
+            dbpath = None
+            for i in TRY_PATHS:
+                if os.access(i,os.R_OK):
+                    dbpath = i
+            if dbpath is None:
+                logging.critical("Cannot find a path for DB")
+                raise Exception("Cannot find path for DB")
+            self.dbpath = dbpath
+            dbfile = os.path.join(dbpath,'config.sq3')
+        db_exist = os.access(dbfile,os.R_OK)
+        self.db = sqlite3.connect(dbfile,check_same_thread=False)
+        if (not db_exist) or debug:
             c = self.db.cursor()
             for i in DBDEF: c.execute(i)
             c.close()
@@ -63,113 +65,134 @@ class DB:
 
 
     def set_config(self, key, value):
-        c = self.db.cursor()
-        c.execute("SELECT key FROM config WHERE key=?",(key,))
-        if len(c.fetchall()) == 0:
-            logging.error("INSERT {} {}".format(key, value))
-            c.execute("INSERT INTO config (key, value) VALUES (?, ?)",(key, value))
-        else:
-            logging.error("UPDATE {} {} rowcount {}".format(key, value, c.rowcount))
-            c.execute("UPDATE config SET value=? WHERE key=?",(value, key))
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT key FROM config WHERE key=?",(key,))
+            if len(c.fetchall()) == 0:
+                logging.error("INSERT {} {}".format(key, value))
+                c.execute("INSERT INTO config (key, value) VALUES (?, ?)",(key, value))
+            else:
+                logging.error("UPDATE {} {} rowcount {}".format(key, value, c.rowcount))
+                c.execute("UPDATE config SET value=? WHERE key=?",(value, key))
+            c.close()
+            self.db.commit()
 
     def get_config(self, key):
-        c = self.db.cursor()
-        c.execute("SELECT value FROM config WHERE key=?",(key,))
-        if c.rowcount == 0: return None
-        r = c.fetchone()[0]
-        c.close()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT value FROM config WHERE key=?",(key,))
+            if c.rowcount == 0: return None
+            r = c.fetchone()[0]
+            c.close()
         return r
     
     def get_ref_number(self):
         """Return a five-digit monotonically increasing number for the 
         local system"""
-        n = self.get_config('lab_reference')
-        if n is None: 
-            n = 0
-        else:
-            n = int(n)
-        n = n+1
-        if n > 99999:
-            n = 1  # loop back to one
-        self.set_config('lab_reference',str(n))
+        with self.dblock:
+            n = self.get_config('lab_reference')
+            if n is None: 
+                n = 0
+            else:
+                n = int(n)
+            n = n+1
+            if n > 99999:
+                n = 1  # loop back to one
+            self.set_config('lab_reference',str(n))
         return "{:0>5}".format(n)
     
     def get_all_configs(self):
         r = {}
-        c = self.db.cursor()
-        c.execute("SELECT key, value FROM config")
-        for i in c.fetchall():
-            r[i[0]] = i[1]
-        c.close()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT key, value FROM config")
+            for i in c.fetchall():
+                r[i[0]] = i[1]
+            c.close()
         return r
 
     def get_files(self):
-        c = self.db.cursor()
-        c.execute("SELECT path, origin, ref FROM files")
-        for i in c.fetchall():
-            yield {'path':i[0],'origin':i[1],'ref':i[2]}
-        c.close()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT path, origin, ref FROM files")
+            for i in c.fetchall():
+                yield {'path':i[0],'origin':i[1],'ref':i[2]}
+            c.close()
         
     def check_file(self,path):
-        c = self.db.cursor()
-        c.execute("SELECT path, origin, ref FROM files WHERE path=?", (path,))
-        r = c.fetchone()
-        c.close()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT path, origin, ref FROM files WHERE path=?", (path,))
+            r = c.fetchone()
+            c.close()
         return r
 
     def add_file(self, path, origin, ref):
-        c = self.db.cursor()
-        c.execute("INSERT INTO files (path, origin, ref) VALUES (?, ?, ?)", (path, origin, ref))
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("INSERT INTO files (path, origin, ref) VALUES (?, ?, ?)", (path, origin, ref))
+            c.close()
+            self.db.commit()
         
     def add_sent_file(self, path, dest, ref):
-        c = self.db.cursor()
-        c.execute("INSERT INTO sent_files (path, dest, ref, status) VALUES (?, ?, ?, 1)", (path, dest, ref))
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("INSERT INTO sent (path, dest, ref, status) VALUES (?, ?, ?, 1)", (path, dest, ref))
+            c.close()
+            self.db.commit()
         
     def set_file_status(self, ref, status, comment):
-        c = self.db.cursor()
-        c.execute("SELECT * FROM sent_files WHERE ref=?",(ref,))
-        if c.fetchone() is None:
-            raise Exception("No sent file for {}".format(ref))
-        c.execute("UPDATE sent_files SET status=?, comment=? WHERE ref=?", (status, comment, ref))
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT * FROM sent WHERE ref=?",(ref,))
+            if c.fetchone() is None:
+                raise Exception("No sent file for {}".format(ref))
+            c.execute("UPDATE sent_files SET status=?, comment=? WHERE ref=?", (status, comment, ref))
+            c.close()
+            self.db.commit()
+            
+    def get_sent_files_status(self):
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT path, status, comment FROM sent")
+            n = {r[0]: (r[1], r[2]) for r in c.fetchall()}
+            c.close()
+        return n
 
     def delete_file(self, path):
-        c = self.db.cursor()
-        c.execute("DELETE FROM files WHERE path=?", (path,))
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("DELETE FROM files WHERE path=?", (path,))
+            c.close()
+            self.db.commit()
         
     def add_log(self, level, notes, dbtime=None):
-        c = self.db.cursor()
-        if dbtime is None:
-            dbtime = "datetime('now', 'localtime')"
-        else: 
-            dbtime = "'{}'".format(dbtime)
-        sql = "INSERT INTO log (stamp, severity, notes) VALUES ({}, ?, ?)".format(dbtime)
-        c.execute(sql, (level, notes))
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            if dbtime is None:
+                dbtime = "datetime('now', 'localtime')"
+            else: 
+                dbtime = "'{}'".format(dbtime)
+            sql = "INSERT INTO log (stamp, severity, notes) VALUES ({}, ?, ?)".format(dbtime)
+            c.execute(sql, (level, notes))
+            c.close()
+            self.db.commit()
         
     def get_log(self):
-        c = self.db.cursor()
-        c.execute("SELECT stamp, severity, notes FROM log ORDER BY stamp DESC LIMIT 100")
-        r = c.fetchall()
-        c.close()
-        return r
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("SELECT stamp, severity, notes FROM log ORDER BY stamp DESC LIMIT 100")
+            r = c.fetchall()
+            c.close()
+            return r
     
     def trim_log(self):
-        c = self.db.cursor()
-        c.execute("DELETE FROM log WHERE stamp < date('now','-1 months')")
-        c.execute("DELETE FROM sent_files WHERE stamp < date('now','-1 months')")
-        c.close()
-        self.db.commit()
+        with self.dblock:
+            c = self.db.cursor()
+            c.execute("DELETE FROM log WHERE stamp < date('now','-1 months')")
+            c.execute("DELETE FROM sent_files WHERE stamp < date('now','-1 months')")
+            c.close()
+            self.db.commit()
 
 class UDPServer:
         
@@ -252,7 +275,6 @@ class SQLiteHandler(logging.Handler):
                    );
                    """
 
-    
     def __init__(self, db):
         logging.Handler.__init__(self)
         self.db = db
@@ -261,7 +283,6 @@ class SQLiteHandler(logging.Handler):
         record.dbtime = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
 
     def emit(self, record):
-       
         # Use default formatting:
         self.format(record)
         # Set the database time up:
@@ -272,3 +293,25 @@ class SQLiteHandler(logging.Handler):
             notes += " "+logging._defaultFormatter.formatException(record.exc_info)
         # Insert log record:
         self.db.add_log(level, notes, dbtime=record.dbtime)
+        
+class GUIHandler(logging.Handler):
+    """
+    Logging handler suitable for GUIs, where logging process in is a worker thread
+    (i.e not the GUI thread)
+                """
+    def __init__(self, db):
+        logging.Handler.__init__(self)
+        self.queue = Queue.Queue()
+        
+    def emit(self, record):
+        # Use default formatting:
+        self.format(record)
+        self.queue.put((record.levelno,record.msg))
+        
+    def queue(self):
+        """an iterator emitting (loglevel, message) tuples"""
+        try:
+            while True:
+                yield self.queue.get(block=False)
+        except Queue.Empty:
+            pass

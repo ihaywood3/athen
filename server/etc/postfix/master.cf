@@ -20,14 +20,15 @@ submission inet n       -       -       -       -       smtpd -v
   -o smtpd_sasl_auth_enable=yes
   -o smtpd_reject_unlisted_recipient=no
   -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
+localhost:10025	inet	n       -       -       -       -       smtpd -v
   -o milter_macro_daemon_name=ORIGINATING
   -o content_filter=filter:dummy
 filter    unix  -       n       n       -       10      pipe
-    flags=Rq user=filter null_sender=
-    argv=/usr/athen/adm/outgoing.py ${sender} ${recipient}
-localhost:10025	inet  n     -       -       -       -       smtpd -v
-  -o smtp_tls_security_level = encrypt
-  -o mynetworks=127.0.0.1/32
+    flags=Rq user=athen null_sender=
+    argv=/home/ian/athen/server/python/filter.py ${sender} ${recipient}
+secure	unix  n     -       -       -       -       smtpd -v
+  -o smtp_tls_security_level=encrypt
+  -o syslog_name=postfix/secure
 #smtps     inet  n       -       -       -       -       smtpd
 #  -o syslog_name=postfix/smtps
 #  -o smtpd_tls_wrappermode=yes

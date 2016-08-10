@@ -5,21 +5,22 @@
     <title>ATHEN Main Server: {% block title %}{% endblock %}</title>
 </head>
   <body>
-    <div class="sidebar">
+    <div id="content">
+    <div id="sidebar">
       <ul>
-	{% if 'the_dn' in session %}
-	<li />Logged in as {{ session.orgname }}
+	{% if 'username' in session %}
+	<li />Logged in as {{ session.username }}
 	<li /><a href="/logout">Logout</a>
 	<li /><a href="/org/edit">Edit Details</a>
 	<li /><a href="/users/list">List Users</a>
 	{% else %}
 	<li /><a href="/login">Login</a>
 	{% endif %}
-	<li /><a href="/confirm">Confirm regstration</a>
+	<li /><a href="/confirm">Confirm registration</a>
 	<li /><a href="/org/new">New Organisation</a>
       </ul>
     </div>
-    <div id="rightside">
+    <div id="main">
       <h2>ATHEN Main Server: {{ self.title() }}</h2>
       <p>
 	{% with messages = get_flashed_messages() %}
@@ -33,6 +34,9 @@
 	{% endwith %}
       </p>
       <div id="content">{% block body %}{% endblock %}</div>
-    </div>
+    </div></div>
+{% if fragment is defined and fragment %}
+{% else %}
   </body>
 </html>
+{% endif %}

@@ -70,7 +70,7 @@ def parse_txt(txt,orig):
     m = re.search(r"Email: (.*)",txt)
     if m is None:
         raise ParsingError("Can't find recipient email")
-    d['recipient_email'] = m.group(1)
+    d['recipient_email'] = m.group(1).strip()
     m = re.search("Receipient: (.*)",txt)
     if m is None:
         raise ParsingError("Can't find recip[ent name")

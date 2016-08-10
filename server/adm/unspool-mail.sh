@@ -1,11 +1,16 @@
 #!/bin/bash
+if [ -z "$1" ] ; then
+    echo "Need username" >&2
+    exit 1
+fi
 
-if [ "`whoami`" == "root" ] ; then
-    su $1 -c "$0 $1"
-else
+#if [ "`whoami`" == "root" ] ; then
+#    su $1 -c "$0 $1"
+#else
     cd `dirname $0`
     . ./utils.sh
     USER=$1
+    log "unspooling for $USER"
     UHOME=/home/athen/home/$USER
     cd /home/athen/spool/$USER
     LOCKFILE=/var/lock/athen.$USER.lock
@@ -22,4 +27,4 @@ else
 	done
     ) 9>$LOCKFILE
     rm -f $LOCKFILE
-fi
+#fi

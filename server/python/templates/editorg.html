@@ -17,12 +17,12 @@ Edit Organisation
     {% if error != "" %}
     <span class="error">{{ error }}</span></p><p>
     {% endif %}
-    <table>
+    <table class="formfields">
       <tr>
 	<th>Name</th>
 	<td>
 	  {% if mode == "new" %}
-	  <input type="text" name="o" length="20" value="{{ o }}" />
+	  <input type="text" name="o" length="20" value="{{ data.o }}" />
 	  {% else %}
 	  {{ o }}
 	  {% endif %}
@@ -30,35 +30,36 @@ Edit Organisation
       </tr>
       <tr>
 	<th>Street</th>
-	<td><input type="text" length="20" value="{{ st }}" name="st" /></td>
+	<td><input type="text" length="20" value="{{ data.street }}" name="street" /></td>
       </tr>
       <tr>
 	<th>Town</th>
-	<td><input type="text" length="20" value="{{ l }}" name="l" /></td>
+	<td><input type="text" length="20" value="{{ data.l }}" name="l" /></td>
       </tr>
       <tr>
 	<th>Postcode</th>
-	<td><input type="text" length="10" value="{{ postalCode }}" name="postalCode" /></td>
+	<td><input type="text" length="10" value="{{ data.postalCode }}" name="postalCode" /></td>
       </tr>
       <tr>
+	<th>State/Territory</th>
+	<td>
+	  <select name="st">
+	    {{ html_select(['ACT','WA','TAS','VIC','NT','SA','QLD','Norfolk Is','NSW'],data['st'])|safe}}
+	    </select>
+      <tr>
 	<th>Telephone</th>
-	<td><input type="text" length="20" value="{{ telephoneNumber }}" name="telephoneNumber" /></td>
+	<td><input type="text" length="20" value="{{ data.telephoneNumber }}" name="telephoneNumber" /></td>
       </tr>
       <tr>
 	<th>Fax</th>
-	<td><input type="text" length="20" value="{{ facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
+	<td><input type="text" length="20" value="{{ data.facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
       </tr>
       <tr>
 	<th>Type</th>
 	<td>
 	  <select name="businessCategory">
-	    <option />General Practice
-	    <option />Specialist Practice
-	    <option />Hospital
-	    <option />Legal firm
-	    <option />Police
-	    <option />Disability NGO
-	    <option />Child Protection
+	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health'],data['businessCategory'])|safe}}
+	    </select>
 	</td>
       </tr>
       <tr>

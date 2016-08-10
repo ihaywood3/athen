@@ -10,10 +10,13 @@ import base, imap
 
 
 def handle_SIGTERM(sig,frame):
-    imap.running = False
+    global imap
+    imap.set_external_quit()
     logging.debug("received SIGTERM")
     
 def handle_SIGUSR1(sig,frame):
+    global imap
+    imap.set_external_reconfigure()
     logging.debug("received SIGUSR1")
 
 if __name__=='__main__':

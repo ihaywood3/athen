@@ -20,6 +20,7 @@ owner = ""
 secret_key = "skfjalosfkepw0scl"
 
 sql_path = '/home/ian/athen.sqlite'
+latex_path = '/home/ian/athen/latex_output'
 
 # DONT CHANGE BELOW HERE UNLESS YOU KNOW WHAT YOU ARE DOING
 import util, myldap

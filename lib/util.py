@@ -13,6 +13,7 @@ DEFAULT_TO= "ian@haywood.id.au"
 DEFAULT_FROM="ian@haywood.id.au"
 DEFAULT_SERVER="haywood.id.au"
 
+NONCELENGTH=10
 
 class SMTP(smtplib.SMTP):
     """A simple subclass to support SMTP over UNIX sockets
@@ -72,7 +73,7 @@ def make_nonce():
     alphas = [chr(i) for i in range(ord('A'),ord('Z')+1)]
     alphas.extend([str(i) for i in range(0,10)])
     while check_swear(nonce):
-        nonce = ''.join(random.choice(alphas) for dum in range(1,10))
+        nonce = ''.join(random.choice(alphas) for dum in range(0,NONCELENGTH))
     return nonce
 
 
@@ -80,19 +81,27 @@ def make_nonce():
     
 class AthenError(Exception):
 
-    def __init__(self, err, field=None, data=None):
+    def __init__(self, err, field=None, data=None, template=None):
         self.err = err
         self.field = field
         self.data = data
-        if self.data is None: self.data = emptydict()
+        if self.data is None: self.data = {}
+        self.template = None
 
     def __str__(self):
-        return repr((self.err, self.field, self.data))
+        if self.field is None:
+            return self.err
+        else:
+            return repr((self.err, self.field, self.data))
 
     def __repr__(self):
         return repr((self.err, self.field, self.data))
 
-
+class LoginRequiredError(Exception):
+    """Special error for when the user needs to log in again
+    """
+    pass
+    
 def validate_fields(request,mode,schema):
     data = {}
     for k, required, regex, nice_name in schema:
@@ -103,11 +112,11 @@ def validate_fields(request,mode,schema):
             if not regex is None:
                 m = re.match(regex, data[k])
                 if m is None:
-                    raise AthenError("{} with value of {} is not valid".format(nice_name,repr(data[k])), k, emptydict(data))
+                    raise AthenError("{} with value of {} is not valid".format(nice_name,repr(data[k])), k, data)
             data[k] = clean_string(data[k])
         else:
             if mode == 'new' and required:
-                raise AthenError(nice_name+" is required", k, emptydict(data))
+                raise AthenError(nice_name+" is required", k, data)
     return data
     
 
@@ -127,12 +136,14 @@ def make_hash(password,stub):
     algo_names = ['invalid','sha256','sha512']
     salt = fields[3]
     salt2 = binascii.unhexlify(salt)
-    reps = int(fields[2])*10000
+    reps = int(fields[2])
     try: 
         dk = hashlib.pbkdf2_hmac(algo_names[algo],bytes(password),salt2,reps)
     except AttributeError:
         # FIXME: not available =< 2.7.8 so our own version here
         dk = bytes(password)
+        st = time.time()
+        et = time.time()
         for i in range(0,reps):
             dk = hashlib.sha512(dk+salt2).digest()
     h = binascii.hexlify(dk)
@@ -149,17 +160,20 @@ def clean_string(s):
     return s
 
 def make_username(u):
-    """Make a free string suitable for a email/UNIX username"""
+    """Make a free string suitable for a email/UNIX username
+    i.e. be really, really tight about allowed characters:
+    the lowercase English alphabet, full stop, underscore, and the digits
+    and that's it"""
     u = u.lower()
     u = u.replace(" ",".")
     u = u.replace("-","_")
-    u2 = u.replace("..",".").replace('__','_')
+    u2 = None
     while u2 != u:
-        u = u2
-        u2 = u.replace("..",".")
-    allowed = 'abcdefghijklmnopqrstuvwzyz._'
-    u = filter(lambda x: x in allowed,u)
-    return u
+        u2 = u
+        u2 = u2.replace("..",".")
+        u2 = u2.replace('__','_')
+    allowed = 'abcdefghijklmnopqrstuvwzyz._0123456789'
+    return filter(lambda x: x in allowed,u)
 
 def latexise(v):
     """Make string safe for LaTeX"""
@@ -172,3 +186,10 @@ def latexise(v):
     v = v.replace("<", "\\textless ")
     v = v.replace("BACKSSLASH", "\\textbackslash ")
     return v
+
+def cprotect(s):
+    """make stirng safe for C/Javascript"""
+    s = s.replace("\"","\\\"")
+    s = s.replace("\n","\\n")
+    s = s.replace("\r","")
+    return s

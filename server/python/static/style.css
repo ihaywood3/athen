@@ -20,13 +20,32 @@ span.error
     font-weight: bold;
 }
 
-div.sidebar {
-    float: left;
-    width: 230px;
-    margin-left: -100%;
-    font-size: 90%;
+
+div#content {
+    position: relative;
+    width: 100%;
 }
 
-div.sidebar ul {
+div#sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 240px;
+}
+div#main {
+    position: relative;
+    margin-left: 250px;
+}
+
+div#sidebar ul {
     list-style: none;
+}
+
+table.formfields td input {
+    width: 20em;
+}
+
+table.formfields th,td {
+    text-align: left;
 }

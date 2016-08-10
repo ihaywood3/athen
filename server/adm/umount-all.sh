@@ -1,16 +1,11 @@
 #!/bin/bash
 set -e
 
-DEBUG=0
-
-if [ $1 == "-d" ] ; then
-    set -x
-    DEBUG=1
-fi
-
 DIR=`dirname $0`
 . $DIR/utils.sh
 . $DIR/cryptoloop.sh
+
+log "umount-all.sh"
 
 OLDPWD=$(pwd)
 
@@ -21,13 +16,6 @@ cd $TMPDIR
 
 mount > mounts
 ps axu --no-headers > ps
-
-if [ ! -z $DEBUG ] ; then
-    echo Mounts::
-    cat mounts
-    echo Ps::
-    cat ps
-fi
 
 awk '
   FILENAME == "ps" &&  $11 == "dovecot/imap" {online["/dev/mapper/" $1]=1 } 
