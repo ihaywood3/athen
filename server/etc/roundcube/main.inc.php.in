@@ -269,7 +269,7 @@ $rcmail_config['session_storage'] = 'db';
 $rcmail_config['memcache_hosts'] = null; // e.g. array( 'localhost:11211', '192.168.1.12:11211', 'unix:///var/tmp/memcached.sock' );
 
 // check client IP in session athorization
-$rcmail_config['ip_check'] = false;
+$rcmail_config['ip_check'] = true;
 
 // check referer of incoming requests
 $rcmail_config['referer_check'] = false;
@@ -368,7 +368,7 @@ $rcmail_config['mdn_use_from'] = false;
 // 2 - one identity with possibility to edit all params
 // 3 - one identity with possibility to edit all params but not email address
 // 4 - one identity with possibility to edit only signature
-$rcmail_config['identities_level'] = 0;
+$rcmail_config['identities_level'] = 4;
 
 // Mimetypes supported by the browser.
 // attachments of these types will open in a preview window
@@ -473,10 +473,10 @@ $rcmail_config['trash_mbox'] = 'Trash';
 // display these folders separately in the mailbox list.
 // these folders will also be displayed with localized names
 // NOTE: Use folder names with namespace prefix (INBOX. on Courier-IMAP)
-$rcmail_config['default_folders'] = array('INBOX', 'Drafts', 'Sent', 'Junk', 'Trash');
+$rcmail_config['default_folders'] = array('INBOX', 'Drafts', 'Sent', 'Junk', 'Trash','Downloaded','Error');
 
 // automatically create the above listed default folders on first login
-$rcmail_config['create_default_folders'] = false;
+$rcmail_config['create_default_folders'] = true;
 
 // protect the default folders from renames, deletes, and subscription changes
 $rcmail_config['protect_default_folders'] = true;
@@ -751,7 +751,7 @@ $rcmail_config['addressbook_name_listing'] = 0;
 $rcmail_config['timezone'] = 'auto';
 
 // prefer displaying HTML messages
-$rcmail_config['prefer_html'] = true;
+$rcmail_config['prefer_html'] = false;
 
 // display remote inline images
 // 0 - Never, always ask
@@ -823,7 +823,7 @@ $rcmail_config['display_next'] = true;
 // 0 - Do not expand threads 
 // 1 - Expand all threads automatically 
 // 2 - Expand only threads with unread messages 
-$rcmail_config['autoexpand_threads'] = 0;
+$rcmail_config['autoexpand_threads'] = 2;
 
 // When replying:
 // -1 - don't cite the original message
@@ -839,7 +839,7 @@ $rcmail_config['strip_existing_sig'] = true;
 // 1 - Always
 // 2 - New messages only
 // 3 - Forwards and Replies only
-$rcmail_config['show_sig'] = 1;
+$rcmail_config['show_sig'] = 2;
 
 // Use MIME encoding (quoted-printable) for 8bit characters in message body
 $rcmail_config['force_7bit'] = false;
@@ -869,14 +869,14 @@ $rcmail_config['delete_junk'] = false;
 $rcmail_config['mdn_requests'] = 1;
 
 // Return receipt checkbox default state
-$rcmail_config['mdn_default'] = 0;
+$rcmail_config['mdn_default'] = 1;
 
 // Delivery Status Notification checkbox default state
 // Note: This can be used only if smtp_server is non-empty
 $rcmail_config['dsn_default'] = 0;
 
 // Place replies in the folder of the message being replied to
-$rcmail_config['reply_same_folder'] = false;
+$rcmail_config['reply_same_folder'] = true;
 
 // Sets default mode of Forward feature to "forward as attachment"
 $rcmail_config['forward_attachment'] = false;

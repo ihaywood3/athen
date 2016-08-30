@@ -5,7 +5,7 @@ config can be reloaded by UDP signal
 """
 
 from socket import *
-import threading, os, os.path, sqlite3, logging, sys, time, Queue
+import threading, os, os.path, sqlite3, logging, sys, time, Queue, logging.handlers
 
 PORT=62347
 DBDEF=[
@@ -29,8 +29,8 @@ QUIT_SOFT=1  # quit when convient for the client
 QUIT_NOW=2 # quite using sys.exit()
 
 TRY_PATHS=['C:\\Program Files\\ATHEN',
-           'C:\\ATHEN',
            '/var/lib/athen/']
+# FIXME: what do for Mac?
 
 class PermanentError(Exception):
     """An error that won't get fixed until the user changes the settings"""
@@ -44,12 +44,16 @@ class TempError(Exception):
 class DB:
 
     def __init__(self,dbfile=None,debug=False):
-        self.dblock = threading.Lock()
+        self.dblock = threading.RLock()
+        self.reflock = threading.Lock()
         if dbfile is None:
             dbpath = None
             for i in TRY_PATHS:
-                if os.access(i,os.R_OK):
+                if os.path.isdir(i) and os.access(i,os.R_OK):
                     dbpath = i
+            if os.access("gui.py",os.R_OK):
+                # the current directory looks like ut is the app directory
+                dbpath = "."
             if dbpath is None:
                 logging.critical("Cannot find a path for DB")
                 raise Exception("Cannot find path for DB")
@@ -57,12 +61,27 @@ class DB:
             dbfile = os.path.join(dbpath,'config.sq3')
         db_exist = os.access(dbfile,os.R_OK)
         self.db = sqlite3.connect(dbfile,check_same_thread=False)
+        self.dbfile = dbfile
         if (not db_exist) or debug:
             c = self.db.cursor()
             for i in DBDEF: c.execute(i)
             c.close()
             self.db.commit()
 
+
+    def get_file_logger(self):
+        """Initialise a file logger based on options in config"""
+        logfile = self.get_config("logfile")
+        if logfile is None:
+            options = [('/var/log/athen/client.log','/var/log/athen/'),("C:\\Program Files\\ATHEN\\athen.log","C:\\Program Files\\ATHEN"),(os.path.expanduser('~/athen.log'),os.path.expanduser("~"))]
+            for lfile, lpath in options:
+                if os.access(lfile,os.W_OK) or os.access(lpath,os.X_OK|os.W_OK):
+                    logfile = lfile
+            if logfile is None:
+                return None
+        hdlr = logging.handlers.RotatingFileHandler(logfile, mode='a', maxBytes=1000000, backupCount=5)
+        hdlr.setFormatter(logging.Formatter(fmt="%(asctime)s [%(levelname)s] (%(filename)s:%(lineno)d) %(message)s"))
+        return hdlr
 
     def set_config(self, key, value):
         with self.dblock:
@@ -82,14 +101,16 @@ class DB:
             c = self.db.cursor()
             c.execute("SELECT value FROM config WHERE key=?",(key,))
             if c.rowcount == 0: return None
-            r = c.fetchone()[0]
+            r = c.fetchone()
+            if r is None: return None
+            r = r[0]
             c.close()
         return r
     
     def get_ref_number(self):
         """Return a five-digit monotonically increasing number for the 
         local system"""
-        with self.dblock:
+        with self.reflock:
             n = self.get_config('lab_reference')
             if n is None: 
                 n = 0
@@ -147,7 +168,7 @@ class DB:
             c.execute("SELECT * FROM sent WHERE ref=?",(ref,))
             if c.fetchone() is None:
                 raise Exception("No sent file for {}".format(ref))
-            c.execute("UPDATE sent_files SET status=?, comment=? WHERE ref=?", (status, comment, ref))
+            c.execute("UPDATE sent SET status=?, comment=? WHERE ref=?", (status, comment, ref))
             c.close()
             self.db.commit()
             
@@ -155,7 +176,7 @@ class DB:
         with self.dblock:
             c = self.db.cursor()
             c.execute("SELECT path, status, comment FROM sent")
-            n = {r[0]: (r[1], r[2]) for r in c.fetchall()}
+            n = {r[0]: (int(r[1]), r[2]) for r in c.fetchall()}
             c.close()
         return n
 
@@ -299,17 +320,22 @@ class GUIHandler(logging.Handler):
     Logging handler suitable for GUIs, where logging process in is a worker thread
     (i.e not the GUI thread)
                 """
-    def __init__(self, db):
+    def __init__(self):
         logging.Handler.__init__(self)
         self.queue = Queue.Queue()
         
     def emit(self, record):
         # Use default formatting:
         self.format(record)
-        self.queue.put((record.levelno,record.msg))
+        level = MAP_LEVELS.get(record.levelno, 0)
+        stamp = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(record.created))
+        notes = record.msg
+        if record.exc_info:
+            notes += " "+logging._defaultFormatter.formatException(record.exc_info)      
+        self.queue.put((stamp,level,notes))
         
-    def queue(self):
-        """an iterator emitting (loglevel, message) tuples"""
+    def dequeue(self):
+        """an iterator emitting (timestamp, loglevel, message) tuples"""
         try:
             while True:
                 yield self.queue.get(block=False)

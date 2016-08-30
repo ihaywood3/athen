@@ -57,6 +57,9 @@ class MainTestCase(unittest.TestCase):
             os.mkdir(clientdir+"errors/")
             os.mkdir(clientdir+"uploads/")
             os.mkdir(clientdir+"waiting/")
+
+    def runTest(self):
+        pass
     
     def test_messages(self):
         emailer1 = imap.Emailer(dict(
@@ -86,28 +89,83 @@ class MainTestCase(unittest.TestCase):
         logging.debug("MAINTHREAD writing PIT text")
         with open(os.path.join(self.basedir,"client1","uploads",PIT_FILENAME),"w") as f:
             f.write(PIT_TEXT)
-        emailer1.loop()
-        time.sleep(5)
-        logging.debug("MAINTHREAD now active")
+        emailer1.scan_directories()
+        emailer2.get_messages()
         d = os.path.join(self.basedir,"client2","downloads")
+        found_a_file = False
         for i in os.listdir(d):
             logging.debug("MAINTHREAD found file %s" % i)
             f = os.path.join(d,i) 
             with open(f,"r") as fd:
                 contents = fd.read()
-            assert MESSAGE in contents
-            os.unlink(f) # pretend we are an EMR and delete the received file
-        time.sleep(12)
+            if MESSAGE in contents:
+                found_a_file = True
+                os.unlink(f) # pretend we are an EMR and delete the received file
+        assert found_a_file
+        emailer2.check_consumed_files()
+        emailer1.get_messages()
+        emailer1.logout_imap()
+        emailer2.logout_imap()
         db1 = base.DB(self.db1_name)
         n = db1.get_sent_files_status()
-        emailer1.set_external_quit()
-        email1.thread.join()
-        emailer2.set_external_quit()
-        emailer2.thread.join()
-        assert n[PIT_FILENAME] == imap.STATUS_DELIVERED
-            
-            
-            
+        #emailer1.set_external_quit()
+        #emailer2.set_external_quit()
+        #emailer2.thread.join()
+        assert n[PIT_FILENAME][0] == imap.STATUS_DELIVERED
+
+    def test_web_receive(self):
+        emailer1 = imap.Emailer(dict(
+            dbfile=self.db1_name,
+            debug=True,
+            username='test.org.seven',
+            download_path=os.path.join(self.basedir,"client1","downloads"),
+            password='foobar123',
+            host='localhost',
+            timeout=5,
+            upload_path=os.path.join(self.basedir,"client1","uploads"),
+            errors_path=os.path.join(self.basedir,"client1","errors"),
+            waiting_path=os.path.join(self.basedir,"client1","waiting")))        
+        logging.debug("MAINTHREAD writing PIT text")
+        with open(os.path.join(self.basedir,"client1","uploads",PIT_FILENAME),"w") as f:
+            f.write(PIT_TEXT)
+        emailer1.scan_directories()           
+        raw_input("Log on to test.org.eight and reply")
+        emailer1.get_messages() # get the return receipt
+        emailer1.logout_imap()
+        db1 = base.DB(self.db1_name)
+        n = db1.get_sent_files_status()
+        assert n[PIT_FILENAME][0] == imap.STATUS_DELIVERED  
+
+    def test_web_sent(self):
+        emailer1 = imap.Emailer(dict(
+            dbfile=self.db1_name,
+            debug=True,
+            username='test.org.seven',
+            download_path=os.path.join(self.basedir,"client1","downloads"),
+            password='foobar123',
+            host='localhost',
+            timeout=5,
+            upload_path=os.path.join(self.basedir,"client1","uploads"),
+            errors_path=os.path.join(self.basedir,"client1","errors"),
+            waiting_path=os.path.join(self.basedir,"client1","waiting")))    
+        raw_input("Log on to test.org.eight and send message to test.org.seven")
+        emailer1.get_messages()
+        d = os.path.join(self.basedir,"client1","downloads")
+        found_a_file = False
+        for i in os.listdir(d):
+            logging.debug("MAINTHREAD found file %s" % i)
+            pudb.set_trace()
+            f = os.path.join(d,i) 
+            with open(f,"r") as fd:
+                contents = fd.read()
+            if MESSAGE in contents:
+                found_a_file = True
+                os.unlink(f) # pretend we are an EMR and delete the received file
+        assert found_a_file    
+        emailer1.check_consumed_files()
+        emailer1.logout_imap()
+        print "You should have read receipt"
+
     def tearDown(self):
         os.close(self.db1_fd)
         os.unlink(self.db1_name)
@@ -115,5 +173,13 @@ class MainTestCase(unittest.TestCase):
         os.unlink(self.db2_name)
         os.system("rm -R %s" % self.basedir)
         
-if __name__ == '__main__':
-    unittest.main()
+
+def go():
+    m = MainTestCase()
+    m.setUp()
+    m.test_web_sent()
+    m.tearDown()
+
+go()
+
+

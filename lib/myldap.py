@@ -3,11 +3,14 @@ An LDAP wrapper that is a bit more Pythonic and easier to manage than the base i
 """
 
 import ldap, ldap.filter, time
-import config
 
 FIELD_CONVERSIONS = [('organization', 'o'), ('surname', 'sn'), ('cn', 'commonName')]
 
-    
+PUBLIC_LDAP_SERVER='ldaps://localhost/'
+#PUBLIC_LDAP_SERVER='ldaps://athen.email/'
+PRIVATE_LDAP_SERVER='ldapi:///'
+PRIVATE_LDAP_USER='cn=admin,dc=athen,dc=email'
+
 def ldap_time():
     return time.strftime("%Y%m%d%H%M%SZ",time.gmtime())
 
@@ -110,11 +113,15 @@ class LDAP:
     """
 
     def __init__(self, local=False, password=""):
+        """
+        local: if True use server of same host
+        False: use the public server at athen.email
+        """
         if local:
-            self.conn = ldap.initialize('ldapi:///')
-            self.conn.simple_bind_s('cn=admin,dc=athen,dc=email',password)
+            self.conn = ldap.initialize(PRIVATE_LDAP_SERVER)
+            self.conn.simple_bind_s(PRIVATE_LDAP_USER,password)
         else:
-            self.conn = ldap.initialize("ldaps://athen.email/")
+            self.conn = ldap.initialize(PUBLIC_LDAP_SERVER)
 
     def query(self,query_base=None,query=None,*args,**kwargs):
         if query_base is None:

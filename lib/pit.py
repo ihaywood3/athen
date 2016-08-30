@@ -1,6 +1,11 @@
 #!/usr/bin/python
 
-import logging, re, time
+import logging, re, time, pudb
+import myldap
+import config
+import email.utils
+
+SUBJECT_RE=re.compile(r"\[([A-Za-z\-' ]+, [A-Za-z\-' ]+) \((M|F)\) DOB: ?([0-9\/]+) (.+, .+ [0-9]{4})\] (.*)$", re.IGNORECASE)
 
 """A simple PIT generator
 Example grabbed from http://www.healthintersections.com.au/example.pit
@@ -39,7 +44,7 @@ template = """001 ATHEN                                          07 01/07/2006
 208 Test Category  :      R
 211 Requested Tests:      LETTER
 299 
-{content}
+{content:0}
 309 
 319 
 390 End of Report  :
@@ -47,10 +52,11 @@ template = """001 ATHEN                                          07 01/07/2006
 999 END OF LISTING - Run Number: {run:3}  {date:10 }  {time:5}:00"""
 
 
-def subst(input,txt):
+def subst(enput,txt):
     field, sz = txt.split(':')
-    txt = input.get(field,"")
-    if sz == 0: return txt
+    sz = int(sz)
+    txt = enput.get(field,"")
+    if sz == 0: return txt # zero size means just return, don't try any clever padding
     if len(txt) > sz:
         logging.warn("reducing field {} to size {}".format(field,sz))
         return txt[:sz]
@@ -70,11 +76,11 @@ def fix_lines(lines):
             l = l[80:]
         yield "301 "+l
 
-def make(input):
-    input['time'] = time.strftime("%H:%M")
-    input['date'] = time.strftime("%d/%m/%Y")
+def make(enput):
+    enput['time'] = time.strftime("%H:%M")
+    enput['date'] = time.strftime("%d/%m/%Y")
     try:
-        day, month, year = [int(x) for x in input['dob'].split('/')]
+        day, month, year = [int(x) for x in enput['dob'].split('/')]
         if year < 25:
             year = year+2000
         elif year < 100:
@@ -82,25 +88,61 @@ def make(input):
         assert year > 1850 and year < 2100
         assert day > 0 and day < 32
         assert month > 0 and month < 13
-        input['dob'] = "{:0>2}/{:0>2}/{}".format(day,month,year)
+        enput['dob'] = "{:0>2}/{:0>2}/{}".format(day,month,year)
     except:
-        raise Exception("date of birth not valid")
+        logging.exception("date conversion failed")
+        enput['dob'] = '01/01/1990'
     # FIXME: Howto get sensible values for these
-    input['run'] = '001'
-    input['id'] = '0000'
-    if 'content' in input:
+    enput['run'] = '001'
+    enput['id'] = '0000'
+    if 'content' in enput:
         # we have an RTF file to embed
         # remove newlines from content so its one big line
         # FIXME: will this actually work?!
-        input['content'] = "301 "+input['content'].replace("\n","").replace("\r","")
+        enput['content'] = "301 "+enput['content'].replace("\n","").replace("\r","")
     else:
-        s = input['text']
+        s = enput['text']
         s = s.replace("\r","")
-        s = list(fix_lines(s.split("\n"))).join("\n")
-        inpuit['content'] = s
-    s = re.sub(r"{(.{8})}", lambda m: subst(input,m.group(1)), template)
+        s = "\n".join(list(fix_lines(s.split("\n"))))
+        enput['content'] = s
+    s = re.sub(r"{(.+?)}", lambda m: subst(enput,m.group(1)), template)
     s = s.replace("\n","\r\n") # use Internet/Windows style newlines
     return s
+
+def make_from_email(msg):
+    """Returns PIT message if email meets criteria otherwise None
+    TODO: be smarter with attachments other than plain text: how to/if convert to PIT?
+    """
+    recipient_name, recipient_email = email.utils.parseaddr(msg["To"])
+    # this is the same regex as in athen/server/roundcube/athen.js
+    m = SUBJECT_RE.match(msg['Subject'])
+    if m:
+        doc = {}
+        doc['patient_name'] = m.group(1)
+        doc['sex'] = m.group(2)
+        doc['dob'] = m.group(3)
+        doc['address'] = m.group(4)
+        #subject = m.group(5)
+        try:
+            hub = myldap.LDAP()
+            r = hub.query(config.base_dn,"(mail=%s)",recipient_email,fields=['providerNumber','cn'])
+            if r:
+                doc['provider_number'] = r[0]['providerNumber']
+                if recipient_name == "":
+                    recipient_name = r[0]['cn']
+        except:
+            logging.exception("couldn't get provider number from LDAP server - left blank")
+        if recipient_name == "": 
+            recipient_name = recipient_email
+        doc['recipient'] = recipient_name
+        text = ""
+        for part in msg.walk():
+            if part.get_content_type() == 'text/plain':
+                text += part.get_payload()
+        if text != "":
+            doc['text'] = text
+            return make(doc)
+    return None
 
 def extract_addressee(pit):
     m  = re.search(r"123.*: *([^ ]+)", pit)

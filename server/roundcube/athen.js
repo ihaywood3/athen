@@ -4,6 +4,8 @@
 **  - Plugin script
 */
 
+var ADDRESS_RE=/\[([A-Za-z\-' ]+), ([A-Za-z\-' ]+) \((M|F)\) DOB: ?([0-9\/]+) (.+), (.+) ([0-9]{4})\] (.*)$/;
+
 function purify(str)
 {
     str = str.replace("[","");
@@ -81,6 +83,12 @@ if (window.rcmail)
 	
 	sname = sname.toUpperCase();
 	subj = $("#compose-subject").val();
+	m = subj.match(ADDRESS_RE);
+	if (m)
+	    {
+		// we need to "gobble up" the existing address data to avoid duplications
+		subj = m[7];
+	    }
 	$("#compose-subject").val( "["+sname+", "+fname+" ("+sex+") DOB:"+dob+" "+addr+", "+suburb+" "+postcode+"] "+subj);
 	return true;
 	    
@@ -95,7 +103,7 @@ if (window.rcmail)
 	subject = $("#compose-subject").val();
 	if (subject)
 	{
-	    m = subject.match(/\[([A-Za-z\-' ]+), ([A-Za-z\-' ]+) \((M|F)\) DOB: ([0-9\/]+) (.+), (.+) ([0-9]{4})\] (.*)$/);
+	    m = subject.match(ADDRESS_RE);
 	    if (m)
 	    {
 		$("#patient_surname").val(m[1]);
@@ -108,9 +116,9 @@ if (window.rcmail)
 		}
 		$("#patient_dob").val(m[4]);
 		$("#patient_address").val(m[5]);
-		$("patient_suburb").val(m[6]);
-		$("patient_postcode").val(m[6]);
-		$("#compose-subject").val(m[7]);
+		$("#patient_suburb").val(m[6]);
+		$("#patient_postcode").val(m[7]);
+		$("#compose-subject").val(m[8]);
 	    }
 	}
     }

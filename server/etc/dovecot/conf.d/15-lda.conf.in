@@ -44,7 +44,7 @@ lda_mailbox_autocreate = yes
 
 protocol lda {
   # Space separated list of plugins to load (default is global mail_plugins).
-  #mail_plugins = $mail_plugins
+  mail_plugins = $mail_plugins sieve
   log_path = /var/log/dovecot-lda-errors.log
   info_log_path = /var/log/dovecot-lda.log
 }

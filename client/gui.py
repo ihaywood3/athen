@@ -2,11 +2,22 @@
 
 from Tkinter import *
 import logging, pdb, time
+import pudb
 import ttk
 
-import base
+import base, imap
 
+logging.getLogger().setLevel(logging.DEBUG)
 db = base.DB()
+filelogger = db.get_file_logger()
+if filelogger:
+    logging.getLogger().addHandler(filelogger)
+guilogger = base.GUIHandler()
+logging.getLogger().addHandler(guilogger)
+
+
+emailer = imap.Emailer(db=db)
+emailer.loop_thread()
 
 TICK_TIME=2000
 
@@ -39,9 +50,6 @@ class Tooltip(object):
     def close(self, event=None):
         if self.tw:
             self.tw.destroy()
-
-
-
     
 def save_config():
     #pdb.set_trace()
@@ -49,16 +57,18 @@ def save_config():
         s = vars[k].get()
         db.set_config(k, s)
     db.set_config('config_time',time.asctime())
+    emailer.set_external_reconfigure()
         
-def quit():
-    db.add_log(0, "GUI client exited")
+def gui_quit():
+    logging.info("GUI shutting down")
+    emailer.set_external_quit()
     root.destroy()
 
 # now set up GUI
 
 root = Tk()
 root.wm_title("ATHEN")
-root.protocol("WM_DELETE_WINDOW", quit)
+root.protocol("WM_DELETE_WINDOW", gui_quit)
 vars = {}
 vars['username'] = StringVar(root)
 vars['password'] = StringVar(root)
@@ -87,13 +97,13 @@ ttk.Label(config_tab,text="Upload").grid(row=3,column=0)
 ttk.Entry(config_tab,textvariable=vars['upload_path']).grid(row=3,column=1,columnspan=2,sticky=(E,W),padx=3,pady=3)
 ttk.Button(config_tab,text="Open...",command=None).grid(row=3,column=3)
 ttk.Button(config_tab,text="Save",command=save_config).grid(row=4,column=1,padx=3,pady=3)
-ttk.Button(config_tab,text="Quit",command=quit).grid(row=4,column=2,padx=3,pady=3)
+ttk.Button(config_tab,text="Quit",command=gui_quit).grid(row=4,column=2,padx=3,pady=3)
 
 # set up Log tab
 log_text = Text(log_tab)
 log_text.tag_config('timestamp',font=('times',10,'bold'))
 log_text.tag_config('normal',font=('times',10,''))
-log_text.tag_config('warning',font=('times',10,''),foreground='yellow')
+log_text.tag_config('warning',font=('times',10,''),foreground='red')
 log_text.tag_config('error',font=('times',10,'bold'),foreground='red')
 log_text.pack(fill=BOTH)
 
@@ -107,8 +117,8 @@ def refresh_log():
     """Refresh the log"""
     logs = db.get_log()
     log_text.config(state=NORMAL)
-    log_text.delete(1.0, END)
-    for i in logs:
+    #log_text.delete(1.0, END)
+    for i in guilogger.dequeue():
         text = "[{}] ".format(i[0])
         log_text.insert(END,text,"timestamp")
         text = "{}\n".format(i[2])
@@ -116,12 +126,11 @@ def refresh_log():
         if i[1] == 1: tag = "warning"
         if i[1] == 2: tag = "error"
         log_text.insert(END, text, tag)
-        # FIXME: bold the date and different colurs for errors/warnings
-
+        # FIXME: bold the date and different colours for errors/warnings
     log_text.config(state=DISABLED)
     log_text.after(TICK_TIME, refresh_log)
 
-db.add_log(0, "client starting")
+logging.info("GUI client starting")
 
 # initialise the log by called a tick
 refresh_log()
