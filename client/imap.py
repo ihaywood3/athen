@@ -1,4 +1,8 @@
-import imaplib, select, os, os.path, glob, email, time, logging, sys, shutil, pudb, threading, ConfigParser, socket, re, traceback
+import imaplib, select, os, os.path, glob, email, time, logging, sys, shutil, pudb, threading, socket, re, traceback
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
 import email.mime.text
 import email.message
 import email.mime.multipart
@@ -10,7 +14,7 @@ import email.utils
 import smtplib
 #import docx
 
-import base, rtf, sys
+import base, sys
 sys.path.append('../lib')
 import pit
 
@@ -383,7 +387,7 @@ class Emailer:
                     ostatus = STATUS_DELIVERED
                 elif action == 'delayed':
                     ostatus = STATUS_PENDING
-                elif action <> 'failed':
+                elif action != 'failed':
                     comment.append("Action: {}".format(action))
                 if diag is None and status2[0] != "2":
                     comment.append("Status code: {}".format(status))
@@ -491,7 +495,7 @@ class Emailer:
         reply.attach(part2)
         if action == "failed" and orig_msg:
             # part 3: the headers of the original message
-            hdrs = "".join("{}: {}\r\n".format(k, orig_msg[k]) for k in orig_msg.keys())
+            hdrs = "".join("{}: {}\r\n".format(k, orig_msg[k]) for k in list(orig_msg.keys()))
             part3 = email.mime.text.MIMEText(_text=hdrs,_subtype="rfc822-headers")
             reply.attach(part3)
         logging.debug("sending DSN to %s with code %r message %r" % (dest,status,diagnostic))
@@ -509,7 +513,7 @@ class Emailer:
     def split_paths(self, path):
         """split a list of paths into parts
         So Windows client can override and use ; instead"""
-        return path.split(':')
+        return path.split(os.pathsep)
     
     def scan_directories(self):
         if self.blank("upload_path"):
@@ -520,38 +524,57 @@ class Emailer:
             logging.error("No error path set so no uploading")
             return
         errors_path = self.cfg['errors_path']
+        if not os.path.exists(errors_path):
+            try:
+                os.makedirs(errors_path)
+            except:
+                logging.exception("failed to create {}".format(errors_path))
+                return
         if self.blank("waiting_path"):
             logging.error("Can't upload as no waiting path (uploads awaiting confirmation)")
-            return           
+            return
         waiting_path = self.cfg['waiting_path']
+        if not os.path.exists(waiting_path):
+            try:
+                os.makedirs(waiting_path)
+            except:
+                logging.exception("failed to create {}".format(waiting_path))
+                return           
         dirs = self.split_paths(upload_path)
         for d in dirs:
-            if os.access(d,os.X_OK|os.R_OK|os.W_OK):
-                exts = self.cfg.get('extensions','*.rtf,*.pit')
-                for ext in exts.split(','):
-                    for fn in glob.glob(os.path.join(d,ext)):
-                        if os.access(fn,os.R_OK|os.W_OK):
-                            try:
-                                if ext == "*.rtf":
-                                    data = rtf.parse_rtf(fn)
-                                    pitfile = pit.make(data)
-                                    assert re.match(EMAIL_REGEXP,data['recipient_email'])
-                                    self.send_as_pit(pitfile,fn,data['recipient_email'])
-                                if ext == "*.pit":
-                                    with open(fn,"r") as fd:
-                                        pitfile = fd.read()
-                                    recip = pit.extract_addressee(pitfile)
-                                    assert recip
-                                    #assert re.match(EMAIL_REGEXP,recip) 
-                                    self.send_as_pit(pitfile,fn,recip)
-                            except:
-                                logging.exception("problem sending {}".format(fn))
-                                shutil.move(fn,errors_path)
-                        else:
-                            logging.warn("path {} would match but I don't have access".format(fn))
-                    self.check_mode()
+            if os.path.exists(d):
+                if os.access(d,os.X_OK|os.R_OK|os.W_OK):
+                    exts = self.cfg.get('extensions','*.rtf,*.pit')
+                    for ext in exts.split(','):
+                        for fn in glob.glob(os.path.join(d,ext)):
+                            if os.access(fn,os.R_OK|os.W_OK):
+                                try:
+                                    if ext == "*.rtf":
+                                        data = rtf.parse_rtf(fn)
+                                        pitfile = pit.make(data)
+                                        assert re.match(EMAIL_REGEXP,data['recipient_email'])
+                                        self.send_as_pit(pitfile,fn,data['recipient_email'])
+                                    if ext == "*.pit":
+                                        with open(fn,"r") as fd:
+                                            pitfile = fd.read()
+                                        recip = pit.extract_addressee(pitfile)
+                                        assert recip
+                                        #assert re.match(EMAIL_REGEXP,recip) 
+                                        self.send_as_pit(pitfile,fn,recip)
+                                except:
+                                    logging.exception("problem sending {}".format(fn))
+                                    shutil.move(fn,errors_path)
+                            else:
+                                logging.warn("path {} would match but I don't have access".format(fn))
+                        self.check_mode()
+                else:
+                    logging.warn("directory {} in upload list but I don't have access".format(d))
             else:
-                logging.warn("directory {} in upload list but I don't have access".format(d))
+                logging.info("upload directory {} doesn't exist, trying to create".format(d))
+                try:
+                    os.makedirs(d)
+                except:
+                    logging.exception("failed creating {}".format(d))
     
     def send_as_pit(self,pitfile,original_filename,recipient_email):
         mail = email.mime.application.MIMEApplication(pitfile,_subtype="x-pit")

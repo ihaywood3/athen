@@ -154,9 +154,9 @@ def create_new_hash(password):
 
 def clean_string(s):
     """Remove LDAP and HTML-sensitive chars from a string, plus any other whitespace or weirdness"""
-    translation_table = dict.fromkeys(map(ord, '()&*,/|="<>'), None)
+    translation_table = dict.fromkeys(list(map(ord, '()&*,/|="<>')), None)
     s = s.translate(translation_table)
-    s = filter(lambda x: ord(x) > 31 and ord(x) < 126, s)
+    s = [x for x in s if ord(x) > 31 and ord(x) < 126]
     return s
 
 def make_username(u):
@@ -173,7 +173,7 @@ def make_username(u):
         u2 = u2.replace("..",".")
         u2 = u2.replace('__','_')
     allowed = 'abcdefghijklmnopqrstuvwzyz._0123456789'
-    return filter(lambda x: x in allowed,u)
+    return [x for x in u if x in allowed]
 
 def latexise(v):
     """Make string safe for LaTeX"""

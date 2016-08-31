@@ -5,7 +5,11 @@ config can be reloaded by UDP signal
 """
 
 from socket import *
-import threading, os, os.path, sqlite3, logging, sys, time, Queue, logging.handlers
+try:
+    import queue
+except ImportError:
+    import Queue as queue
+import threading, os, os.path, sqlite3, logging, sys, time, logging.handlers
 
 PORT=62347
 DBDEF=[
@@ -67,16 +71,21 @@ class DB:
             for i in DBDEF: c.execute(i)
             c.close()
             self.db.commit()
+            self.set_config('download_path',os.path.join(self.dbpath,'download'))
+            self.set_config('upload_path',os.path.join(self.dbpath,'upload'))
+            self.set_config('errors_path',os.path.join(self.dbpath,'errors'))
+            self.set_config('waiting_path',os.path.join(self.dbpath,'waiting'))
 
 
     def get_file_logger(self):
         """Initialise a file logger based on options in config"""
         logfile = self.get_config("logfile")
         if logfile is None:
-            options = [('/var/log/athen/client.log','/var/log/athen/'),("C:\\Program Files\\ATHEN\\athen.log","C:\\Program Files\\ATHEN"),(os.path.expanduser('~/athen.log'),os.path.expanduser("~"))]
+            options = [('/var/log/athen/client.log','/var/log/athen/'),("C:\\Program Files\\ATHEN\\athen.log","C:\\Program Files\\ATHEN"),(os.path.expanduser('~/athen.log'),os.path.expanduser("~")),('./athen.log','.')]
             for lfile, lpath in options:
                 if os.access(lfile,os.W_OK) or os.access(lpath,os.X_OK|os.W_OK):
                     logfile = lfile
+                    break
             if logfile is None:
                 return None
         hdlr = logging.handlers.RotatingFileHandler(logfile, mode='a', maxBytes=1000000, backupCount=5)
@@ -322,7 +331,7 @@ class GUIHandler(logging.Handler):
                 """
     def __init__(self):
         logging.Handler.__init__(self)
-        self.queue = Queue.Queue()
+        self.queue = queue.Queue()
         
     def emit(self, record):
         # Use default formatting:
@@ -339,5 +348,5 @@ class GUIHandler(logging.Handler):
         try:
             while True:
                 yield self.queue.get(block=False)
-        except Queue.Empty:
+        except queue.Empty:
             pass

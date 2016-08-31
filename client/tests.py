@@ -129,7 +129,7 @@ class MainTestCase(unittest.TestCase):
         with open(os.path.join(self.basedir,"client1","uploads",PIT_FILENAME),"w") as f:
             f.write(PIT_TEXT)
         emailer1.scan_directories()           
-        raw_input("Log on to test.org.eight and reply")
+        input("Log on to test.org.eight and reply")
         emailer1.get_messages() # get the return receipt
         emailer1.logout_imap()
         db1 = base.DB(self.db1_name)
@@ -148,7 +148,7 @@ class MainTestCase(unittest.TestCase):
             upload_path=os.path.join(self.basedir,"client1","uploads"),
             errors_path=os.path.join(self.basedir,"client1","errors"),
             waiting_path=os.path.join(self.basedir,"client1","waiting")))    
-        raw_input("Log on to test.org.eight and send message to test.org.seven")
+        input("Log on to test.org.eight and send message to test.org.seven")
         emailer1.get_messages()
         d = os.path.join(self.basedir,"client1","downloads")
         found_a_file = False
@@ -164,7 +164,7 @@ class MainTestCase(unittest.TestCase):
         assert found_a_file    
         emailer1.check_consumed_files()
         emailer1.logout_imap()
-        print "You should have read receipt"
+        print("You should have read receipt")
 
     def tearDown(self):
         os.close(self.db1_fd)

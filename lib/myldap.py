@@ -2,7 +2,8 @@
 An LDAP wrapper that is a bit more Pythonic and easier to manage than the base interface
 """
 
-import ldap, ldap.filter, time
+import ldap.filter
+import time
 
 FIELD_CONVERSIONS = [('organization', 'o'), ('surname', 'sn'), ('cn', 'commonName')]
 
@@ -33,7 +34,7 @@ class Ldap_DN:
 
     def __str__(self):
         """Return to standard notation"""
-        return ",".join([ldap.filter.filter_format("%s=%s",[i[0],i[1]]) for i in self.dn])
+        return ",".join([ldap3.filter.filter_format("%s=%s",[i[0],i[1]]) for i in self.dn])
 
     def __getitem__(self, x):
         """Return first domain component matching field name x"""
@@ -62,7 +63,7 @@ class Ldap_Row:
         dn, self.vals = the_row
         self.dn = Ldap_DN(dn)
         self.nvals = {}
-        for k, v in self.vals.items():
+        for k, v in list(self.vals.items()):
             k = self.normalise_field_name(k)
             if len(v) == 1:
                 v = v[0]
@@ -139,18 +140,18 @@ class LDAP:
             fields = ["*"]
         query = ldap.filter.filter_format(query,args)
         res = self.conn.search_s(str(query_base),scope,query,fields)
-        return map(lambda x: Ldap_Row(x, self), res)
+        return [Ldap_Row(x, self) for x in res]
 
 
     def add(self, dn, data):
         modlist = []
-        for k, v in data.items():
+        for k, v in list(data.items()):
             modlist.append((k, makelist(v)))
         self.conn.add_s(str(dn),modlist)
 
     def modify(self, dn, modlist):
         if type(modlist) is dict:
-                modlist = [(ldap.MOD_REPLACE, k, makelist(v)) for k, v in modlist.items()]
+                modlist = [(ldap.MOD_REPLACE, k, makelist(v)) for k, v in list(modlist.items())]
         self.conn.modify_s(str(dn), modlist)
         
     def delete(self, dn):

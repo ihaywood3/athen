@@ -1,9 +1,17 @@
 #!/usr/bin/python
 
-from Tkinter import *
+try:
+    from tkinter import *
+    import tkinter.ttk as ttk
+    import tkinter.filedialog as filedialog
+except ImportError:
+    from Tkinter import *
+    import ttk
+    import tkFileDialog as filedialog
+
 import logging, pdb, time
 import pudb
-import ttk
+
 
 import base, imap
 
@@ -50,9 +58,11 @@ class Tooltip(object):
     def close(self, event=None):
         if self.tw:
             self.tw.destroy()
-    
+
+
+root = Tk()
+
 def save_config():
-    #pdb.set_trace()
     for k in vars:
         s = vars[k].get()
         db.set_config(k, s)
@@ -64,9 +74,14 @@ def gui_quit():
     emailer.set_external_quit()
     root.destroy()
 
+def opendir(path):
+    newpath = filedialog.askdirectory(parent=root,title="Set "+path,initialdir=vars[path].get() or "/")
+    if newpath:
+        vars[path].set(newpath)
+
 # now set up GUI
 
-root = Tk()
+
 root.wm_title("ATHEN")
 root.protocol("WM_DELETE_WINDOW", gui_quit)
 vars = {}
@@ -92,10 +107,10 @@ ttk.Label(config_tab,text="Password").grid(row=1,column=0)
 ttk.Entry(config_tab,textvariable=vars['password'],show="*").grid(row=1,column=1,columnspan=3,sticky=(E,W),padx=3,pady=3)
 ttk.Label(config_tab,text="Download").grid(row=2,column=0)
 ttk.Entry(config_tab,textvariable=vars['download_path']).grid(row=2,column=1,columnspan=2,sticky=(E,W),padx=3,pady=3)
-ttk.Button(config_tab,text="Open...",command=None).grid(row=2,column=3)
+ttk.Button(config_tab,text="Open...",command=lambda: opendir('download_path')).grid(row=2,column=3)
 ttk.Label(config_tab,text="Upload").grid(row=3,column=0)
 ttk.Entry(config_tab,textvariable=vars['upload_path']).grid(row=3,column=1,columnspan=2,sticky=(E,W),padx=3,pady=3)
-ttk.Button(config_tab,text="Open...",command=None).grid(row=3,column=3)
+ttk.Button(config_tab,text="Open...",command=lambda: opendir('upload_path')).grid(row=3,column=3)
 ttk.Button(config_tab,text="Save",command=save_config).grid(row=4,column=1,padx=3,pady=3)
 ttk.Button(config_tab,text="Quit",command=gui_quit).grid(row=4,column=2,padx=3,pady=3)
 
@@ -109,7 +124,7 @@ log_text.pack(fill=BOTH)
 
 # initialise the config screen from the DB
 configs = db.get_all_configs()
-for k in vars.keys():
+for k in list(vars.keys()):
     if k in configs:
         vars[k].set(configs[k])
     
