@@ -2,7 +2,7 @@
 An LDAP wrapper that is a bit more Pythonic and easier to manage than the base interface
 """
 
-import ldap.filter
+import ldap, ldap.filter
 import time
 
 FIELD_CONVERSIONS = [('organization', 'o'), ('surname', 'sn'), ('cn', 'commonName')]
@@ -11,6 +11,8 @@ PUBLIC_LDAP_SERVER='ldaps://localhost/'
 #PUBLIC_LDAP_SERVER='ldaps://athen.email/'
 PRIVATE_LDAP_SERVER='ldapi:///'
 PRIVATE_LDAP_USER='cn=admin,dc=athen,dc=email'
+
+
 
 def ldap_time():
     return time.strftime("%Y%m%d%H%M%SZ",time.gmtime())
@@ -34,7 +36,7 @@ class Ldap_DN:
 
     def __str__(self):
         """Return to standard notation"""
-        return ",".join([ldap3.filter.filter_format("%s=%s",[i[0],i[1]]) for i in self.dn])
+        return ",".join([ldap.filter.filter_format("%s=%s",[i[0],i[1]]) for i in self.dn])
 
     def __getitem__(self, x):
         """Return first domain component matching field name x"""
@@ -54,6 +56,9 @@ class Ldap_DN:
     
     def __repr__(self):
         return "<LDAP DN: {}>".format(str(self))
+
+
+PUBLIC_BASE_DN = Ldap_DN('dc=athen,dc=email')
 
 class Ldap_Row:
     """Wrapper around rows"""

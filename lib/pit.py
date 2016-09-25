@@ -1,9 +1,10 @@
 #!/usr/bin/python
 
-import logging, re, time, pudb
+import logging, re, time, email.utils
+try:
+    import pudb
+except: pass
 import myldap
-import config
-import email.utils
 
 SUBJECT_RE=re.compile(r"\[([A-Za-z\-' ]+, [A-Za-z\-' ]+) \((M|F)\) DOB: ?([0-9\/]+) (.+, .+ [0-9]{4})\] (.*)$", re.IGNORECASE)
 
@@ -23,7 +24,7 @@ template = """001 ATHEN                                          07 01/07/2006
 029 ---------------------------------------------------------------------------
 100 Start Patient  :      {patient_name:0}
 101                       {address:0}
-104                       Birthdate: {dob:8 }   Age: {age_unit:1}{age:3}   Sex: {sex:1}
+104                       Birthdate: {dob:10  } Age: {age_unit:1}{age:3}   Sex: {sex:1}
 105                       Telephone: {telephone:10}
 109 
 110 Your Reference :      
@@ -31,8 +32,8 @@ template = """001 ATHEN                                          07 01/07/2006
 112 Medicare Number:      {medicare:12}
 115 Phone Enquiries:      ATHEN enquiries                  0359867709
 119 
-121 Referred by....:      {recipient:32}
-123 Addressee      :      {recipient:32}
+121 Referred by....:      {recipient:0}
+123 Addressee      :      {recipient:0}
 129 
 200 Start of Result:
 201 Specimen       :
@@ -125,7 +126,7 @@ def make_from_email(msg):
         #subject = m.group(5)
         try:
             hub = myldap.LDAP()
-            r = hub.query(config.base_dn,"(mail=%s)",recipient_email,fields=['providerNumber','cn'])
+            r = hub.query(myldap.PUBLIC_BASE_DN,"(mail=%s)",recipient_email,fields=['providerNumber','cn'])
             if r:
                 doc['provider_number'] = r[0]['providerNumber']
                 if recipient_name == "":

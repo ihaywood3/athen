@@ -15,7 +15,7 @@ import pudb
 
 import base, imap
 
-logging.getLogger().setLevel(logging.DEBUG)
+logging.getLogger().setLevel(logging.INFO)
 db = base.DB()
 filelogger = db.get_file_logger()
 if filelogger:

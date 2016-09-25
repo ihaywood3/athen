@@ -1,4 +1,4 @@
-import imaplib, select, os, os.path, glob, email, time, logging, sys, shutil, pudb, threading, socket, re, traceback
+import imaplib, select, os, os.path, glob, email, time, logging, sys, shutil, threading, socket, re, traceback
 try:
     import configparser
 except ImportError:
@@ -9,21 +9,22 @@ import email.mime.multipart
 import email.mime.nonmultipart
 import email.mime.message
 import email.mime.base
+import email.mime.application
 import email.encoders
 import email.utils
 import smtplib
 #import docx
 
 import base, sys
-sys.path.append('../lib')
-import pit
+sys.path.append('..')
+import lib.pit as pit
 
 
 
 
 IMAP_HOST = 'localhost'
 #IMAP_HOST='athen.email'
-WAIT_TIME=900
+WAIT_TIME=60
 
 # message statues
 STATUS_DELIVERED=0
@@ -253,14 +254,14 @@ class Emailer:
             except socket.gaierror as err:
                 logging.error("DNS lookup failed or similar %r" % err)
                 self.conn = None
-                time.sleep(60)
+                self.perm_error(60)
                 # so repeat forever waiting for DNS/internet to return
             except socket.error as err:
                 if err.errno == 110:
                     logging.error("connection timed out")
                     # connection timed out
                     self.conn = None
-                    time.sleep(60)
+                    self.perm_error(60)
                     # so repeat forever waiting for Internet to return
                 else:
                     logging.error("some other socket error: %d %r" % (err.errno,err))
@@ -271,13 +272,16 @@ class Emailer:
                 
     def temp_error(self):
         with self.lock:
-            try:
-                self.conn.close()
-            except: pass
-            try:
-                self.conn.logout()
-            except: pass
-            if self.mode == MODE_QUIT: self.cont = False
+            if not self.conn is None:
+                try:
+                    self.conn.close()
+                except: pass
+                try:
+                    self.conn.logout()
+                except: pass
+            if self.mode == MODE_QUIT: 
+                self.cont = False
+                return
             self.mode = MODE_ERROR
             self.conn = None
         if self.fails > 5:
@@ -288,6 +292,22 @@ class Emailer:
             self.wait(10)
             self.fails = self.fails+1
     
+    def perm_error(self,waittime=60):
+        with self.lock:
+            if not self.conn is None:
+                try:
+                    self.conn.close()
+                except: pass
+                try:
+                    self.conn.logout()
+                except: pass
+            if self.mode == MODE_QUIT: 
+                self.cont = False
+                return
+            self.mode = MODE_ERROR
+            self.conn = None
+        self.wait(waittime)
+
     def wait_socket(self,sock,timeout):
         # UNIX version defined here, we might do different on Windows
         fd = sock.fileno()
@@ -498,7 +518,7 @@ class Emailer:
             hdrs = "".join("{}: {}\r\n".format(k, orig_msg[k]) for k in list(orig_msg.keys()))
             part3 = email.mime.text.MIMEText(_text=hdrs,_subtype="rfc822-headers")
             reply.attach(part3)
-        logging.debug("sending DSN to %s with code %r message %r" % (dest,status,diagnostic))
+        logging.info("sending DSN to %s with code %r message %r" % (dest,status,diagnostic))
         self.send_email(reply)
         
     def send_email(self, themail):
@@ -506,7 +526,6 @@ class Emailer:
         s.starttls()
         s.login(self.cfg['username'],self.cfg['password'])
         themail_str = themail.as_string()
-        logging.debug(themail_str)
         s.sendmail(themail['From'], [themail['To']], themail_str)
         s.quit()
     
@@ -526,6 +545,7 @@ class Emailer:
         errors_path = self.cfg['errors_path']
         if not os.path.exists(errors_path):
             try:
+                logging.info("creating errors_path {}".format(repr(errors_path)))
                 os.makedirs(errors_path)
             except:
                 logging.exception("failed to create {}".format(errors_path))
@@ -536,6 +556,7 @@ class Emailer:
         waiting_path = self.cfg['waiting_path']
         if not os.path.exists(waiting_path):
             try:
+                logging.info("creating waiting_path {}".format(repr(errors_path)))
                 os.makedirs(waiting_path)
             except:
                 logging.exception("failed to create {}".format(waiting_path))
@@ -543,8 +564,9 @@ class Emailer:
         dirs = self.split_paths(upload_path)
         for d in dirs:
             if os.path.exists(d):
+                logging.info("scanning {}".format(d))
                 if os.access(d,os.X_OK|os.R_OK|os.W_OK):
-                    exts = self.cfg.get('extensions','*.rtf,*.pit')
+                    exts = self.cfg.get('extensions','*.rtf,*.pit,*.PIT')
                     for ext in exts.split(','):
                         for fn in glob.glob(os.path.join(d,ext)):
                             if os.access(fn,os.R_OK|os.W_OK):
@@ -554,11 +576,12 @@ class Emailer:
                                         pitfile = pit.make(data)
                                         assert re.match(EMAIL_REGEXP,data['recipient_email'])
                                         self.send_as_pit(pitfile,fn,data['recipient_email'])
-                                    if ext == "*.pit":
+                                    if ext == "*.pit" or ext == "*.PIT":
                                         with open(fn,"r") as fd:
                                             pitfile = fd.read()
                                         recip = pit.extract_addressee(pitfile)
                                         assert recip
+                                        logging.info("found PIT {} sending to {}".format(repr(fn),repr(recip)))
                                         #assert re.match(EMAIL_REGEXP,recip) 
                                         self.send_as_pit(pitfile,fn,recip)
                                 except:

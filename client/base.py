@@ -97,10 +97,10 @@ class DB:
             c = self.db.cursor()
             c.execute("SELECT key FROM config WHERE key=?",(key,))
             if len(c.fetchall()) == 0:
-                logging.error("INSERT {} {}".format(key, value))
+                logging.debug("INSERT {} {}".format(key, value))
                 c.execute("INSERT INTO config (key, value) VALUES (?, ?)",(key, value))
             else:
-                logging.error("UPDATE {} {} rowcount {}".format(key, value, c.rowcount))
+                logging.debug("UPDATE {} {} rowcount {}".format(key, value, c.rowcount))
                 c.execute("UPDATE config SET value=? WHERE key=?",(value, key))
             c.close()
             self.db.commit()

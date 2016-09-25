@@ -41,6 +41,10 @@ PIT_TEXT="""001 Sender - Report                                          07 01/0
 sys.path.append("../lib")
 import util
 
+def writepit(path):
+    with open(path,"w") as f:
+        f.write(PIT_TEXT) 
+
 class MainTestCase(unittest.TestCase):
     
     def setUp(self):
@@ -87,8 +91,7 @@ class MainTestCase(unittest.TestCase):
         #emailer1.loop_thread()
         #emailer2.loop_thread()
         logging.debug("MAINTHREAD writing PIT text")
-        with open(os.path.join(self.basedir,"client1","uploads",PIT_FILENAME),"w") as f:
-            f.write(PIT_TEXT)
+        writepit(os.path.join(self.basedir,"client1","uploads",PIT_FILENAME))
         emailer1.scan_directories()
         emailer2.get_messages()
         d = os.path.join(self.basedir,"client2","downloads")
@@ -180,6 +183,6 @@ def go():
     m.test_web_sent()
     m.tearDown()
 
-go()
+if __name__=='__main__': go()
 
 
