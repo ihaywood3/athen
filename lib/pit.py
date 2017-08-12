@@ -4,7 +4,7 @@ import logging, re, time, email.utils
 try:
     import pudb
 except: pass
-import myldap
+import myldap, config
 
 SUBJECT_RE=re.compile(r"\[([A-Za-z\-' ]+, [A-Za-z\-' ]+) \((M|F)\) DOB: ?([0-9\/]+) (.+, .+ [0-9]{4})\] (.*)$", re.IGNORECASE)
 
@@ -115,6 +115,7 @@ def make_from_email(msg):
     TODO: be smarter with attachments other than plain text: how to/if convert to PIT?
     """
     recipient_name, recipient_email = email.utils.parseaddr(msg["To"])
+    receipient_name = receipient_name.strip()
     # this is the same regex as in athen/server/roundcube/athen.js
     m = SUBJECT_RE.match(msg['Subject'])
     if m:
@@ -124,16 +125,31 @@ def make_from_email(msg):
         doc['dob'] = m.group(3)
         doc['address'] = m.group(4)
         #subject = m.group(5)
+        doc['provider_number'] = ""
         try:
-            hub = myldap.LDAP()
-            r = hub.query(myldap.PUBLIC_BASE_DN,"(mail=%s)",recipient_email,fields=['providerNumber','cn'])
-            if r:
-                doc['provider_number'] = r[0]['providerNumber']
+            hub = myldap.LDAP(host=config.public_ldap,default_base=config.public_base_dn)
+            res = hub.query("(mail=%s)",recipient_email)
+            if res:
+                if res[0].has_key("providerNumber"):
+                    doc['provider_number'] = res[0]['providerNumber']
+                else:
+                    # its an organisational email
+                    # but could the person named be an employee of this org, with a PN?
+                    # strip titles
+                    if len(receipient_name) > 5:
+                        if receipient_name.lower()[0:3] == "dr ": receipient_name = = receipeint_name[3:]
+                        if receipient_name.lower()[0:4] == "dr. ": receipient_name = = receipeint_name[4:]
+                        if receipient_name.lower()[0:7] == "doctor ": receipient_name = = receipeint_name[7:]
+                        res2 = hub.query("(cn=%s)",recipient_name,base=res[0],fields=['providerNumber'])
+                        if res2 and res2[0].has_key("providerNumber"]:
+                            doc['provider_number'] = res2[0]['providerNumber']
+                # use LDAP to give us a real name if we can
                 if recipient_name == "":
-                    recipient_name = r[0]['cn']
+                    recipient_name = res[0]['cn']
+            hub.close()
         except:
-            logging.exception("couldn't get provider number from LDAP server - left blank")
-        if recipient_name == "": 
+            logging.exception("error finding provider number from public LDAP")
+        if recipient_name == "":
             recipient_name = recipient_email
         doc['recipient'] = recipient_name
         text = ""

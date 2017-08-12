@@ -11,8 +11,8 @@ if [ ! -e /home/athen/home/$PAM_USER/private.key ] ; then
   ./unspool-mail.sh "$PAM_USER" &
   disown
 else
-  log "doing pythonic password check for $PAM_USER"
-  exec python check-password.py
+  log "already loggin in, succeeding"
+  exit 0
 fi 
 # CONFIG_FILE: /var/run/dovecot/config
 # DOVECOT_PRESERVE_ENVS: TZ DEBUG_OUTOFMEM

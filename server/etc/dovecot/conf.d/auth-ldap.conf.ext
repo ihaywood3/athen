@@ -19,9 +19,9 @@
 userdb {
   driver = ldap
   args = /etc/dovecot/dovecot-ldap.conf.ext
-  
+  skip = found
   # Default fields can be used to specify defaults that LDAP may override
-  #default_fields = home=/home/virtual/%u
+  default_fields = home=/home/athen/home/%u
 }
 
 # If you don't have any user-specific settings, you can avoid the userdb LDAP

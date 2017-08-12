@@ -18,13 +18,14 @@ append_dot_mydomain = no
 readme_directory = no
 
 # TLS parameters
-smtpd_tls_cert_file=/data/certificate.pem
-smtpd_tls_key_file=/data/private.key
+smtpd_tls_cert_file=/etc/ssl/athen.pem
+smtpd_tls_key_file=/etc/ssl/athen.key
 smtpd_use_tls=yes
 smtpd_tls_protocols = !SSLv2, !SSLv3
-smtpd_tls_security_level=may
+smtpd_tls_security_level=encrypt
 smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
 smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+smtp_tls_security_level=encrypt
 
 # See /usr/share/doc/postfix/TLS_README.gz in the postfix-doc package for
 # information on enabling SSL in the smtp client.
@@ -45,3 +46,4 @@ smtpd_sasl_type = dovecot
 smtpd_sasl_path = private/auth
 
 mailbox_command = /home/ian/athen/adm/spool-mail.sh
+filter_destination_recipient_limit

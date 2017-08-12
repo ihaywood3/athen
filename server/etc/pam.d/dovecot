@@ -1,7 +1,7 @@
 #%PAM-1.0
 
 auth	required	pam_script.so
-#auth	required	pam_ldap.so use_first_pass
+auth	required	pam_ldap.so use_first_pass
 
 #account	[success=ok new_authtok_reqd=done ignore=ignore user_unknown=bad authinfo_unavail=bad default=bad]	pam_ldap.so
 #session	[success=ok default=bad]	pam_ldap.so

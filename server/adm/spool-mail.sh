@@ -1,6 +1,11 @@
 #!/bin/bash
 
-# postfix should set $USER
+# the main delivery script
+
+# postfix should set $USER and a few other envs
+# we should be running as the receipient user
+# (presumably LDAP lookup has occurred to discover this?)
+# see http://www.postfix.org/postconf.5.html#mailbox_command
 
 cd `dirname $0`
 . ./utils.sh
@@ -10,26 +15,22 @@ HOST=$(cat /etc/mailname)
 if [ ! -d /home/athen/spool/$USER ] ; then
     mkdir -p /home/athen/spool/$USER
     chmod 700 /home/athen/spool/$USER
-    chown $USER /home/athen/spool/$USER
+    #chown $USER /home/athen/spool/$USER
 fi
-
-# we shouldn't need to do this but just in case
-#if [ "`whoami`" == "root" ] ; then
-#    su $1 -c "$0 $USER" && exit 0
-#fi
 
 
 log "delivery script for $USER"
+log "id = `id`"
+log "whoami = `whoami'"
 
-if [ ! -r /home/athen/home/$USER.img ] ;then
-    exit 67  # no such user
-fi
-if [ -e /home/athen/home/$USER/private.key ] ; then
+if [ -e $HOME/private.key ] ; then
     # we are logged in, so deliver directly
     log "homedir is mounted, passing straight to Dovecot"
     exec /usr/lib/dovecot/deliver -d $USER
 else
-
+    if [ ! -r /home/athen/home/$USER.img ] ;then
+	exit 67  # no such user. This shouldn't happen
+    fi
     cd /home/athen/spool/$USER
     LOCKFILE=/var/lock/athen.$USER.lock
     (
@@ -40,7 +41,7 @@ else
 	)
 	FILE=`mktemp -p /home/athen/spool/$USER --suffix=.mail`
 	log "saving email to temp FILE=$FILE"
-	openssl smime -encrypt -outform DER -stream -out $FILE /home/athen/home/$USER.pem
+	python ../python/filter.py $USER | openssl smime -encrypt -outform DER -stream -out $FILE /home/athen/home/$USER.pem
     ) 9>$LOCKFILE
     rm -f $LOCKFILE
 fi

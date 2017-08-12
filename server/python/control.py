@@ -14,12 +14,12 @@ class RootController:
         if debug:
             path = ["sudo","/home/ian/athen/server/adm/server.sh"]
         else:
-            path = ["/usr/local/bin/athen/server/sh"]
+            path = ["/usr/local/athen/server/adm/server.sh"]
         self.pro = subprocess.Popen(path,stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)
-    
-    def run(self,cmd):        
+
+    def run(self,cmd):
         cmd = "|".join(i.replace("\\","\\\\").replace("|","\\|") for i in cmd)
         self.pro.stdin.write(cmd+"\n")
         self.pro.stdin.flush()
@@ -39,9 +39,7 @@ class RootController:
             lc = l.strip().split(":")
         if err:
             raise util.AthenError(errtxt)
-    
+
     def quit(self):
         self.pro.stdin.write("QUIT\n")
         self.pro.wait()
-        
-    

@@ -25,8 +25,6 @@ DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-
 cat ./debconf.keys | debconf-set-selections
 DEBIAN_FRONTEND=noninteractive apt-get -y install postfix postfix-ldap 
 
-# install our LDAP schema from hub
-ldapadd -Y EXTERNAL -H ldapi:/// -f ../hub/athen.ldif
 
 DIR=`dirname $0`
 
@@ -118,3 +116,17 @@ find /etc/ -name '*.in' -print | while read file ; do
 				     sed -e "s/HOSTNAME/$HOSTNAME/" $file > ${file%.in}
 				 done
 
+
+# install our LDAP schema
+ldapadd -Y EXTERNAL -H ldapi:/// -f ./athen.ldif
+# change LDAP config to our specifications
+ldapmodify -Y EXTERNAL -H ldapi:/// -f config.ldif
+# stop the server
+service slapd stop
+# wipe LDAp files
+rm -f /var/lib/ldap/*
+# restore with our contents
+cat ./base.ldif | sed -e "s/HOSTNAME/$HOSTNAME/" | slapadd -n 1 
+chown -R openldap:openldap /var/lib/ldap/*
+# and restart
+service slapd start

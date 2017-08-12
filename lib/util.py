@@ -73,7 +73,7 @@ def make_nonce():
     alphas = [chr(i) for i in range(ord('A'),ord('Z')+1)]
     alphas.extend([str(i) for i in range(0,10)])
     while check_swear(nonce):
-        nonce = ''.join(random.choice(alphas) for dum in range(0,NONCELENGTH))
+        nonce = ''.join(random.choice(alphas) for _ in range(0,NONCELENGTH))
     return nonce
 
 

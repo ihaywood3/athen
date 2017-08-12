@@ -17,11 +17,11 @@
 #        by * none
 
 # Space separated list of LDAP hosts to use. host:port is allowed too.
-hosts = 127.0.0.1
+#hosts = 127.0.0.1
 
 # LDAP URIs to use. You can use this instead of hosts list. Note that this
 # setting isn't supported by all LDAP libraries.
-#uris = 
+uris = ldapi:///
 
 # Distinguished Name - the username used to login to the LDAP server.
 # Leave it commented out to bind anonymously (useful with auth_bind=yes).
@@ -90,7 +90,7 @@ hosts = 127.0.0.1
 
 # LDAP base. %variables can be used here.
 # For example: dc=mail, dc=example, dc=org
-base = dc=athen,dc=net,dc=au
+base = dc=athen,dc=email
 
 # Dereference: never, searching, finding, always
 #deref = never
