@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}
+{% if mode == "new" %}
+Create New Account
+{% else %}
+Edit Account: {{ data.cn }}
+{% endif %}
+{% endblock %}
+{% block body %}
+{% if mode == "new" %}
+<form action="/acct/save" method="post" enctype="application/x-www-form-urlencoded">
+{% else %}
+<form action="/acct/update" method="post" enctype="application/x-www-form-urlencoded">
+  {% endif %}
+
+  <p>
+    {% if error != "" %}
+    <span class="error">{{ error }}</span></p><p>
+    {% endif %}
+    <table class="formfields">
+      {% if mode == "new" %}
+      <tr>
+	<th>Type</th>
+	<td>
+      <label for="type_org"><input type="radio" name="type" value="O" id="type_org" {% if type == "O" %}checked{% endif %} />Organisation</label>
+      <label for="type_person"><input type="radio" name="type" value="P" id="type_person" {% if type == "P" %}checked{% endif %} />Individual</label>
+      </td></tr>
+      {% endif %}
+      <tr class="org">
+	<th>Organisation Name</th>
+	<td>
+	  {% if mode == "new" %}
+	  <input type="text" name="o" length="20" value="{{ data.o }}" />
+	  {% else %}
+	  {{ data.cn }}
+	  {% endif %}
+	</td>
+      </tr>
+      <tr class="person">
+	<th>Name</th>
+	<td>
+	  {% if mode == "new" %}
+	  Given Name:<input type="text" name="givenName" length="20" value="{{ data.givenName }}" />
+	  Surname:<input type="text" name="sn" length="20" value="{{ data.sn }}" />
+	  {% else %}
+	  {{ data.cn }}
+	  {% endif %}
+	</td>
+      </tr>
+      <tr>
+	<th>Street</th>
+	<td><input type="text" length="20" value="{{ data.street }}" name="street" /></td>
+      </tr>
+      <tr>
+	<th>Town</th>
+	<td><input type="text" length="20" value="{{ data.l }}" name="l" /></td>
+      </tr>
+      <tr>
+	<th>Postcode</th>
+	<td><input type="text" length="10" value="{{ data.postalCode }}" name="postalCode" /></td>
+      </tr>
+      <tr>
+	<th>State/Territory</th>
+	<td>
+	  <select name="st">
+	    {{ html_select(['ACT','WA','TAS','VIC','NT','SA','QLD','Norfolk Is','NSW'],data['st'])|safe}}
+	    </select>
+      <tr>
+	<th>Telephone</th>
+	<td><input type="text" length="20" value="{{ data.telephoneNumber }}" name="telephoneNumber" /></td>
+      </tr>
+      <tr>
+	<th>Fax</th>
+	<td><input type="text" length="20" value="{{ data.facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
+      </tr>
+      <tr class="org">
+	<th>Type</th>
+	<td>
+	  <select name="businessCategory">
+	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health'],data.get('businessCategory',None))|safe}}
+	    </select>
+	</td>
+      </tr>
+      <tr class="person">
+	<th>Speciality/Profession</th>
+	<td><input type="text" length="20" value="{{ medicalSpecialty }}" name="medicalSpecialty" /></td>
+      </tr>
+      <tr class="person">
+	<th>Medicare Provider Number</th>
+	<td><input type="text" length="20" value="{{ providerNumber }}" name="providerNumber" /></td>
+      </tr>
+      <tr>
+	<th>Password</th>
+	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
+      </tr>
+      <tr>
+	<th>Password (repeat)</th>
+	<td><input type="password" length="20" value="{{ userPassword_repeat }}" name="userPassword_repeat" /></td>
+      </tr>
+      {% if mode == "edit" %}
+      <tr>
+	<th>Status</th>
+	<td><label for="status_closed"><input type="check" name="status_closed" value="yes" id="status_closed" />Mark as closed</label></td>
+      </tr>
+      {% endif %}
+      <tr>
+	<td></td>
+	<td><input type="submit" name="Submit" /></td>
+      </tr>
+    </table>
+  </p>
+</form>
+{% endblock %}
+    
