@@ -28,7 +28,7 @@ from OpenSSL import crypto
 
 from cryptography.hazmat.primitives.serialization import PublicFormat, Encoding
 
-#db = psycopg2.connect(database='smtps',user='ian')
+db = psycopg2.connect(database='smtps',user='ian')
 running = set()
 
 def query(q,params=()):
@@ -60,7 +60,7 @@ def x509_name(x509):
 """do an MX lookup"""
 def mxlookup(domain):
     try:
-        logging.info("resolving %s" % domain)
+        logging.debug("resolving %s" % domain)
         r = list(dns.resolver.query(domain,'MX'))
         #r.sort(key=lambda x: x.preference)
         for i in r:
@@ -82,7 +82,6 @@ def test_smtps(exchange):
         smtp.quit()
         if bin_cert is None:
             return ("No certificate provided",None)
-        #raw_cert = ssl.DER_cert_to_PEM_cert(bin_cert)
         return ("SUCCESS",bin_cert)
     except (smtplib.SMTPException,socket.error) as exc:
         return ("SMTP connection FAILED: %s" % str(exc),None)
@@ -90,38 +89,69 @@ def test_smtps(exchange):
         return ("SMTP connection FAILED: timeout",None)
 
 def analyse_exchange(mxdomain,preference,exchange):
-    logging.info("analysing exchange %s" % exchange)
+    logging.debug("analysing exchange %s" % exchange)
     status, bin_cert = test_smtps(exchange)
-    logging.info("result %r for %s" % (status,exchange))
+    logging.debug("result %r for %s" % (status,exchange))
     if status == "SUCCESS":
         cert = crypto.load_certificate(crypto.FILETYPE_ASN1, bin_cert)
         sha1 = cert.digest('SHA1')
-        r = query("select 1 from exchanges where cert_sha1='%s' and exchange='%s'" % (sha1,exchange))
-        if len(r) == 0:
-            pem = ssl.DER_cert_to_PEM_cert(bin_cert)
-            validto = cert.get_notAfter()
-            validto = validto[0:4]+'-'+validto[4:6]+'-'+validto[6:8]
-            rawkey = cert.get_pubkey().to_cryptography_key().public_bytes(Encoding.DER,PublicFormat.PKCS1)
-            h = hashlib.sha1()
-            h.update(rawkey)
-            sql("insert into exchanges (mx,exchange,preference,status,cert_sha1,issuer,subject,validto,pem,pubkey_sha1) values ('%s','%s',%s,'SUCCESS','%s',$$%s$$,$$%s$$,'%s',$$%s$$,'%s')" % (
-                mxdomain,
-                exchange,
-                preference,
-                sha1,
-                x509_name(cert.get_issuer()),
-                x509_name(cert.get_subject()),
-                validto,
-                pem,
-                h.hexdigest()
+        rawkey = cert.get_pubkey().to_cryptography_key().public_bytes(Encoding.DER,PublicFormat.PKCS1)
+        h= hashlib.sha1()
+        h.update(rawkey)
+        pubkey_sha1 = h.hexdigest()
+        validto = cert.get_notAfter()
+        validto = validto[0:4]+'-'+validto[4:6]+'-'+validto[6:8]
+    else:
+        sha1 = "FAILED"
+    r = query("select status,cert_sha1,pubkey_sha1,issuer,subject from exchanges where mx='%s' and exchange='%s' order by created desc" % (mx,exchange))
+    if len(r) == 0:
+        logging.info("%s (%s): new exchange status %r" % (exchange,mxdomain,status))
+        if status == 'SUCCESS':
+            logging.info("new certificate issuer %r subject %r validto %s" % (x509_name(cert.get_issuer()),x509_name(cert.get_subject()),validto))
+    else:
+        oldstatus, old_cert_sha1, old_pubkey, old_isser, old_subject = r[0]
+        if status == oldstatus:
+            if status == "SUCCESS":
+                if old_cert_sha1 == sha1:
+                    logging.debug("%s (%s): certificate unchanged" % (exchanged,mxdomain))
+                    return
+                else:
+                    if old_pubkey == pubkey_sha1:
+                        logging.info("%s (%s): certificate changed but pubkey unchanged")
+                    else:
+                        logging.warn("%s (%s): certificate pubkey has changed")
+                    logging.info("old certificate issuer %r subject %r" % (old_isser, old_subject))
+                    logging.info("new certificate issuer %r subject %r validto %s" % (x509_name(cert.get_issuer()),x509_name(cert.get_subject()),validto))
+            else:
+                logging.debug("%s (%s): status unchanged %r" % (exchange,mxdomain,status))
+                return
+        else:
+            if status == 'SUCCESS':
+                logging.info("%s (%s): exchange now has SSL was %r" % (exchange,mxdomain,oldstatus))
+                logging.info("new certificate issuer %r subject %r validto %s" % (x509_name(cert.get_issuer()),x509_name(cert.get_subject()),validto))
+            elif oldstatus == 'SUCCESS':
+                logging.warn("%r (%s): was SSL now status %r" % (exchange, mxdomain, status))
+            else:
+                logging.warn("%r (%s): status was %r now status %r" % (exchange, mxdomain, oldstatus, status))
+    if status == 'SUCCESS':
+        sql("insert into exchanges (mx,exchange,preference,status,cert_sha1,issuer,subject,validto,pem,pubkey_sha1) values ('%s','%s',%s,'SUCCESS','%s',$$%s$$,$$%s$$,'%s',$$%s$$,'%s')" % (
+            mxdomain,
+            exchange,
+            preference,
+            sha1,
+            x509_name(cert.get_issuer()),
+            x509_name(cert.get_subject()),
+            validto,
+            ssl.DER_cert_to_PEM_cert(bin_cert),
+            pubkey_sha1
             ))
     else:
-        r = query("select 1 from exchanges where mx='%s' and exchange='%s'" % (mxdomain,exchange))
-        if len(r) == 0:
-            sql("insert into exchanges(status,preference,mx,exchange) values ($$%s$$,%s,$$%s$$,$$%s$$)" % (status,preference,mxdomain,exchange))
-        else:
-            sql("update exchanges set status=$$%s$$ where preference=%s and mx='%s' and exchange='%s'" % (status,preference,mxdomain,exchange))
-
+        sql("insert into exchanges (mx,exchange,preference,status) values ('%s','%s',%s,'%s','%s')" % (
+            mxdomain,
+            exchange,
+            preference,
+            status))
+  
 class Worker(Thread):
     """Thread executing tasks from a given tasks queue"""
     def __init__(self, tasks):
@@ -143,27 +173,16 @@ class Worker(Thread):
 pool = Queue(20)
 for _ in range(20): Worker(pool)
 
-def analyse_domain(mxdomain,force=False):
-    go_ahead = False
-    r = query("select age(lastchecked) > '6 month'::interval from domains where mx='%s'" % mxdomain)
+def analyse_domain(mxdomain):
+    r = query("select 1 from domains where mx='%s'" % mxdomain)
     if len(r) == 1:
-        if r[0][0] or force:
-            go_ahead = True
-            sql("update domains set lastchecked=now() where mx='%s'" % mxdomain)
-        else:
-            pass
-            #logging.info("ignoring %s as recently done" % mxdomain)
+        sql("update domains set lastchecked=now() where mx='%s'" % mxdomain)
     else:
-        go_ahead = True
+        logging.info("new domain %r" % mxdomain)
         sql("insert into domains(mx) values ('%s')" % mxdomain)
-    if go_ahead:
-        for exchange, preference in mxlookup(mxdomain):
-            r = query("select mx, exchange, cert_sha1 from exchanges where exchange ilike '%s' and mx <> '%s'" % (exchange, mxdomain))
-            if len(r) > 0:
-                logging.info("we already know about %s from %s, ignoring" % (exchange, r[0][0]))
-            else:
-                #analyse_exchange(mxdomain,preference,exchange)
-                pool.put((analyse_exchange,(mxdomain,preference,exchange)))
+    for exchange, preference in mxlookup(mxdomain):
+        analyse_exchange(mxdomain,preference,exchange)
+
 
 def analyse_emails(d):
     for i in os.listdir(d):
@@ -229,22 +248,18 @@ def analyse_log(logs):
         st = stats[domain]
         print "{:<40}{:>5}{:>5}{:>5}{:>5}".format(domain[:40],st[0],st[1],st[2],st[3])
 
+
+def analyse_log2(logfile):
+    # Sep 18 00:35:51 haywood postfix/smtp[13747]: C99A580789: to=<admin@jager.net.au>, relay=mx4.netregistry.net[202.124.241.196]:25, delay=17, delays=0.16/0.01/4.7/12, dsn=2.0.0, status=sent (250 OK id=1dtiA9-0000co-1B)
+    regexp = re.compile(r"^([A-Za-z]+) +[0-9]+ +[0-9:]+ haywood postfix/smtp\[[0-9]+\]: [0-9A-F]+: to=<[^@]+@(.+)>, ")
+    alldomains = set()
+    with open(logfile,"r") as fd:
+        for l in fd:
+            m = regexp.match(l)
+            if m:
+                alldomains.add(m.group(1))
+    for i in sorted(list(alldomains)):
+        analyse_domain(i)
+
 if __name__ == '__main__':
-    analyse_log(['/var/log/mail.log'])
-
-def oldmain():
-    cmd = sys.argv[1]
-    if cmd == 'scan':
-        analyse_emails(sys.argv[2])
-    if cmd == 'mbox':
-        analyse_mboxes(sys.argv[2])
-    if cmd == 'fix':
-        r = query("select mx, preference, exchange from exchanges where status <> 'SUCCESS'")
-        for i in r:
-            sql("delete from exchanges where mx='%s' and exchange='%s' and status <> 'SUCCESS'"  % (i[0],i[2]))
-            logging.info("re-analysing exchange %s" % i[2])
-            pool.put((analyse_exchange,(i[0],i[1],i[2])))
-    if cmd == 'logs':
-        analyse_logs(sys.argv[2:])
-    pool.join()
-
+    analyse_log2('/var/log/mail.log')
