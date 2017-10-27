@@ -123,11 +123,10 @@ if (window.rcmail)
 	}
     }
     
-    rcmail.addEventListener('beforesavedraft',save_to_subject)
-    rcmail.addEventListener('beforesend',save_to_subject)
-
-	rcmail.addEventListener('init', function (event)
-				{
+    rcmail.addEventListener('beforesavedraft',save_to_subject);
+    rcmail.addEventListener('beforesend',save_to_subject);
+   rcmail.addEventListener('init', function (event)
+			    {
 				    $("table.compose-headers tr:last").after(
 					$("<tr>")
 					    .append(
@@ -185,11 +184,11 @@ if (window.rcmail)
 					$('<tr>')
 					    .append(
 						$("<td>")
-						    .addClass("title")
-						    .html($("<label>").attr("for", "patient_address").html("Address")),
+						    .html("&nbsp;"),
 						$("<td>")
 						    .addClass("editfield")
 						    .append(
+							"Street&nbsp;",
 							$("<input>")
 							    .attr("id","patient_address")
 							    .attr("type","text")

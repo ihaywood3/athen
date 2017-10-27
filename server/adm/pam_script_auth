@@ -6,12 +6,13 @@ cd `dirname $DIR`
 log "pam_script_auth"
 . ./cryptoloop.sh
 
-if [ ! -e /home/athen/home/$PAM_USER/private.key ] ; then
+if [ ! -e /home/athen/home/$PAM_USER/mail ] ; then
   mount_home "$PAM_USER" "$PAM_AUTHTOK"
+  resize_home_if_required "$PAM_USER"
   ./unspool-mail.sh "$PAM_USER" &
   disown
 else
-  log "already loggin in, succeeding"
+  log "already logged in, succeeding"
   exit 0
 fi 
 # CONFIG_FILE: /var/run/dovecot/config

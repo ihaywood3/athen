@@ -29,13 +29,15 @@ module HL7
     # print out the field using pretty-printing style, called via +pp+
     def pretty_print(pp)
       pp.group(1) do
+        i = 0
         fields_desc.each do |field|
           val = self.send(field[0])
           unless (val.respond_to?(:blank?) and val.blank?) or val.nil? or val == ''
             pp.breakable
-            pp.text(field[0].to_s+':')
+            pp.text(field[0].to_s+' ('+i.to_s+'):')
             pp.pp(val)
           end
+          i+=1
         end
       end
     end

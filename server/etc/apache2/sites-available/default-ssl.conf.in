@@ -4,14 +4,18 @@
 		ServerName HOSTNAME
 
 		DocumentRoot /var/www/html/
- Alias /roundcube/program/js/tiny_mce/ /usr/share/tinymce/www/
- Alias /roundcube /var/lib/roundcube
+		Redirect permanent / https://HOSTNAME/config/index
+		Alias /roundcube/program/js/tiny_mce/ /usr/share/tinymce/www/
+		Alias /roundcube /var/lib/roundcube
+		Alias /static /var/lib/athen/static
 		# Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
 		# error, crit, alert, emerg.
 		# It is also possible to configure the loglevel for particular
 		# modules, e.g.
 		#LogLevel info ssl:warn
-
+		<Location "/config/" >
+		    ProxyPass unix:/var/www/athen.sock|http://localhost/config/
+		</Location>
 		ErrorLog ${APACHE_LOG_DIR}/error.log
 		CustomLog ${APACHE_LOG_DIR}/access.log combined
 

@@ -3,15 +3,14 @@
 """
 The web interface of the local ("leaf") ATHEN mailserver
 """
-import sys, os, ldap, stat, pdb, time, logging, subprocess, threading
-__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-
-sys.path.append(__location__+'/../../lib')
+import sys, os, ldap3, stat, pdb, time, logging, subprocess, threading, pudb, collections, pwd
+if __name__=='__main__':
+    sys.path.append('../../lib')
 from util import *
 import config, myldap, control
 
-# get the root controller started before we get anywhere near Flask
-root_controller = control.RootController(debug=config.debug)
+# WARNING: somebody needs to set this up
+root_controller = None
 
 from flask import session, redirect, url_for, escape, request, render_template, g, flash
 import flask
@@ -32,17 +31,17 @@ Email : {{mail}}
 
 mail_latex_template = """
 \\documentclass[12pt]{letter}
-\\signature{Dr. Ian Haywood}
-\\address{Ian Haywood \\\\ ATHEN \\\\ 64 Robertson Dr\\\\ Mornington VIC 3931\\\\ Tel. 0359867709}
+\\signature{ {{signature}} }
+\\address{ {{originator }} }
 \\begin{document}
-\\begin{letter}{ {{title}}} {{cn}} \\\\ {{street}} \\\\ {{l}} {{postalCode}} {{st}} }
-\\opening{Dear Madam/Sir,}
+\\begin{letter}{ {{title}} {{cn}} \\\\ {{street}} \\\\ {{l}} {{postalCode}} {{st}} }
+\\opening{Dear {{opening}},}
 
-Your organisation has been registered on the ATHEN network using this postal address.
+Your organisation has been registered on {{ network_name }} using this postal address.
 
-Your logon name is\\texttt{ {{uid}} }, and registration code is\\texttt{ {{nonce}} }
+Your logon name is\\texttt{ {{uid}} }, and your registration code is\\texttt{ {{nonce}} }
 
-To confirm your registration, please go to \\texttt{https://athen.org/}, click on `Register' and enter in the code above.
+To confirm your registration, please go to \\texttt{https://{{domain}} }, click on `Register' and enter in the code above.
 
 If you did not request registration, plase check if someone in your organisation did register and show them this letter.
 
@@ -60,6 +59,7 @@ schema = {
             ('l', True, None, 'Town'),
             ('businessCategory', True, None, 'Business category'),
             ('street', True, None, 'Street'),
+            ('l', True, None, 'Town'),
             ('postalCode', True, '[0-9]{4}', 'postcode'),
             ('telephoneNumber', False, '[0-9 ]{8,10}', 'Telephone number'),
             ('facsimileTelephoneNumber', False, '[0-9 ]{8,10}', 'Fax number'),
@@ -90,31 +90,47 @@ def get_ldap():
     """Opens a new LDAP connection if there is none yet for the
     current application context.
     """
-    if not hasattr(g, 'ldap'):
-        g.ldap = myldap.LDAP(dn=config.ldap_user,password=config.password,default_base=config.base_dn)
+    ldap = getattr(g, 'ldap', None)
+    if ldap is None:
+        ldap = g.ldap = myldap.LDAP(dn=config.ldap_user,password=config.password,default_base=config.base_dn)
         #g.remote = myldap.LDAP(host=config.public_hub,default_base=config.public_base_dn)  # LDAP connection to remote public server
-    return g.ldap
-    
+    return ldap
 
-@app.route('/')
+#@app.teardown_appcontext
+#def close_connection(exception):
+#    ldap = getattr(g, 'ldap', None)
+#    if ldap is not None:
+#        ldap.close()
+
+@app.route('/config/index')
 def index():
     return render_template('index.html')
 
-@app.route("/rationale.html")
+@app.route("/")
+def base_index():
+    return redirect(url_for("index"))
+
+@app.route('/static/style.css')
+def css(): # really only for testing, apache should serve this
+    return flask.send_from_directory(os.path.join(app.root_path,'..','static'),'style.css',mimetype='text/css')
+
+@app.route("/config/rationale.html")
 def rationale():
     return render_template("rationale.html")
 
 
-@app.route('/acct/search')
+@app.route('/config/acct/search')
 def searchacct():
     if request.args.get('key',None) is None:
         res = []
     else:
         get_ldap()
-        res = g.ldap.query("(|(&(o=%s*)(objectclass=athenOrganisation))(&(cn=%s*)(objectclass=athenPerson)))",request.args['key'],request.args['key'],fields=['cn','objectclass'])
+        res = g.ldap.query("(|(&(o=%s*)(objectclass=athenOrganisation))(&(cn=%s*)(objectclass=athenPerson)))",request.args['key'],request.args['key'],fields=['cn','objectclass','businessCategory','medicalSpecialty','o','status','l'])
+        g.ldap.close()
+    logging.debug(res)
     return render_template('searchacct.html',result=res)
 
-@app.route('/acct/show')
+@app.route('/config/acct/show')
 def showacct():
     get_ldap()
     the_dn = request.args['dn']
@@ -129,18 +145,29 @@ def showacct():
         s = "invalid"
     s = s.replace("@"," at ")
     acct['displayEmail'] = s
+    g.ldap.close()
     return render_template('showacct.html',acct=acct,users=users,org=org)
 
-@app.route('/acct/new')
+@app.route('/config/acct/new')
 def newacct():
+    allow_unencrypted_home = False
     if not config.public_registration:
         if not 'uid' in session:
+            flash("not logged in")
             return redirect(url_for('index'))
         if not session['uid'] == config.owner:
             flash("not authorised")
             return redirect(url_for('index'))
-    return render_template('editacct.html',mode='new',error_field="",data={})
-
+        else:
+            allow_unencrypted_home = True
+    if request.args['type'] == "O":
+        templ = "editorg.html"
+    else:
+        templ = "editperson.html"
+    data = collections.defaultdict(lambda: "")
+    return render_template(templ,mode='new',error_field="",
+                           allow_unencrypted_home=allow_unencrypted_home,
+                           data=data)
 
 @app.context_processor
 def select_context():
@@ -155,75 +182,96 @@ def select_context():
     return dict(html_select=html_select)
 
 def cmd_check(cmd,outfile):
-    """quck utility to run command and check produced a file"""
-    retcode = subprocess.call(cmd)
+    """quick utility to run command and check produced a file"""
+    retcode = subprocess.call(cmd,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
     if retcode != 0:
         raise AthenError("%r failed" % cmd)
     if not os.path.exists(outfile):
         raise AthenError("%r failed to produce file %s" % (cmd,outfile))
 
-@app.route('/acct/save',methods=['POST'])
+@app.route('/config/acct/save',methods=['POST'])
 def saveacct():
+    allow_unencrypted_home = False
     if not config.public_registration:
-        if not 'user' in session:
+        if not 'uid' in session:
             flash("You must log in to access this page")
             return redirect(url_for('index'))
-        if not session['user'].owner:
+        if not session['uid'] == config.owner:
             flash("not authorised")
             return redirect(url_for('index'))
+        else:
+            allow_unencrypted_home = True
     try:
+        templ = "editorg.html"
         if request.form['type'] == 'O': # we an org
             data = validate_fields(request,'new',schema['org'])
-            uid = make_username(data['o'])
             data['cn'] = data['o']
-            new_dn = config.base_dn.add("o",data["o"])
             data['objectclass'] = ['athenOrganisation','posixAccount']
-            title = "Manager IT Services \\\\ "
+            if data['businessCategory'] == 'General Practice':
+                title = "Practice Manager \\\\"
+            else:
+                title = "Manager IT Services \\\\ "
+            opening = "Madam/Sir"
             namefield = "o"
+            new_dn = config.base_dn.add("o",data["o"])
         else:
             # an independent person
+            templ = "editperson.html"
             data = validate_fields(request,'new',schema['person'])
             data['cn'] = data['givenName']+" "+data['sn']
-            uid = make_username(data['cn'])
-            new_dn = config.base_dn.add("cn",data["cn"])
             data['objectclass'] = ['athenPerson','posixAccount']
             title = ""
             namefield = "sn"
+            opening = data['cn']
+            new_dn = config.base_dn.add("cn",data["cn"])
+        uid = make_username(data['cn'])
         passwd = request.form['userPassword']
         if passwd != request.form['userPassword_repeat']:
             raise AthenError('Passwords do not match','userPassword_repeat',data)
         if len(passwd) < 6:
             raise AthenError("Password must be at least 6 characters","userPassword",data)
+        encrypt_flag = "Y"
+        if allow_unencrypted_home and request.form['encryptFlag'] == "no":
+            encrypt_flag = "N"
         get_ldap()
-        res = g.ldap.query(config.base_dn,"(uid=%s)",uid,fields=['uid'])
+        res = g.ldap.query("(uid=%s)",uid,fields=['uid'])
         if len(res) > 0:
             raise AthenError("User of similar name exists",namefield,data)
         data['mail'] = uid+"@"+config.domain
     except AthenError as e:
         flash(e.err)
-        return render_template('editacct.html',mode='new',error_field=e.field,data=e.data)
+        return render_template(templ,mode='new',error_field=e.field,data=e.data,allow_unencrypted_home=allow_unencrypted_home)
     # ok error-checking is done if we get here
-    # this all gets a bit ugly: during the streaming we can't access the normal Flask context variables
-    # so save to our own locals so we can do the slow stuff during the stream
-    # this is a page fragment: no </body></html>
+    # NB this is a page fragment: no </body></html>
     fragment = render_template("progress.html",data=data)
     session['username'] = data['cn']
-    session['uid'] = uid
-    reload_url = url_for('save_completed')
+    session['uid'] = data['uid'] = uid
+    # now this all gets a bit ugly: during the streaming we can't access the normal Flask context variables
+    # so save to our own locals so we can do the slow stuff during the stream
     ldap_conn = g.ldap
-    latex_data = {k:latexise(v) for k, v in data.items()}
+    reload_url = url_for('save_completed')
+    latex_data = data.copy()
+    del latex_data['objectclass']
+    latex_data = {k:latexise(v) for k, v in latex_data.items()}
     latex_data["title"] = title
     latex_data['nonce'] = data['nonce'] = make_nonce()
-    # we need to do rendering here, but actual LaTeX'ing and sending later
+    latex_data['originator'] = config.letter_origin_address
+    latex_data['domain'] = config.domain
+    latex_data['signature'] = config.letter_signature
+    latex_data['network_name'] = config.letter_network_name
+    latex_data['opening'] = opening
+    # we need to do the LaTeX letter rendering here, but actual LaTeX'ing and sending later
     latex_text = flask.render_template_string(mail_latex_template,**latex_data)
-    debug_mode = (request.form['testing'] == 'yes' or config.debug)
+    debug_mode = (config.debug and request.form.get('_testing') == 'yes')
     data['userpassword'] = passwd # strange, only in a dict will this variable 'survive' into the generator below. others are fine.
     def create_page(): # an internal generator
         yield fragment
         try:
             with main_lock:
+                uidNumber = ldap_conn.get_next_uid(config.public_base_dn)
+                logging.debug("new uid is %s",uidNumber)
                 if not debug_mode:
-                    for n, msg in root_controller.run(["NEWUSER",uid,data["cn"],data["userpassword"]]):
+                    for n, msg in root_controller.run(["NEWUSER",uid,uidNumber,data["cn"],data["userpassword"],encrypt_flag,config.domain]):
                         yield "<script>\nsetProgress({},\"{}\");\n</script>\n".format(n,cprotect(msg))
                 yield "<script>\nsetProgress(90,\"Creating confirmation letter\");\n</script>\n"
                 oldcwd = os.getcwd()
@@ -237,27 +285,35 @@ def saveacct():
                     # FIXME:  somehow send PS to the print queue here
                 finally:
                     for ext in [".tex",".dvi",".aux",".log"]:
-                        fname = latex_data{"uid"]+ext
+                        fname = latex_data["uid"]+ext
                         if os.path.exists(fname):
                             os.unlink(fname)
                     os.chdir(oldcwd)
             yield "<script>\nsetProgress(95,\"Saving record in LDAP database\");\n</script>\n"
             data['status'] = "P" # provisional
             data['timeCreated'] = data['timeLastUsed'] = myldap.ldap_time()
-            data['gidNumber'] = '200'
-            data['uidNumber'] = ldap_conn.get_next_uid()
+            data['gidNumber'] = '2000'
+            data['uidNumber'] = uidNumber
             data['homeDirectory'] = '/home/athen/home/'+uid
-            data["userpassword"] = myldap.make_hash(data{"userpassword"])
+            data['loginShell'] = '/bin/false'
+            data["userpassword"] = myldap.hash_password(data["userpassword"])
             ldap_conn.add(new_dn,data)
+            ldap_conn.close()
             yield "<script>\nsetProgress(100,\"Completed\");\nwindow.location.href = \"{}\";</script>\n</body></html>\n".format(reload_url)
         except Exception as e:
             yield "<script>\nsetError(\"{}\");\n</script>\n</body></html>\n".format(cprotect(str(e)))
+            logging.exception("in yielder")
     return flask.Response(create_page())
 
-@app.route('/org/save_completed')
+@app.route('/config/acct/save_completed')
 def save_completed():
-    uid, dn, cn = require_login('index')
-    return render_template('createdacct.html',uid=uid,cn=cn)
+    user = require_login('index')
+    if user.is_class("athenorganisation"):
+        typ="O"
+    else:
+        typ="P"
+    g.ldap.close()
+    return render_template('createdacct.html',uid=uid,cn=user.cn,type=typ)
 
 @app.route("/testyield",methods=["GET"])
 def test_yield():
@@ -284,17 +340,17 @@ function setProgress(n,msg)
         yield "</body></html>"
     return flask.Response(yielder())
 
-def get_acct_dn(acct):
+def get_acct(acct):
     """get the full DN and CN of the named acct
-    assumed org has been created: succeed or throw an exception"""
-    res = g.ldap.query("(uid=%s)",uid,fields=["cn"])
+    we assume account has been created: this func either succeeds or throws an exception"""
+    res = g.ldap.query("(uid=%s)",acct)
     if len(res) == 0:
-        raise AthenError("Account {} not found".format(uid),"o",{"o":cn})
+        raise AthenError("Account {} not found".format(uid),"cn",{"cn":res[0].cn})
     if len(res) != 1:
-        raise AthenError("Account {} has multiple LDAP entries WHICH SHOULD NEVER HAPPEN".format(org),"o",{"o":org})
-    return (res[0].dn, res[0]['cn'])
+        raise AthenError("Account {} has multiple LDAP entries WHICH SHOULD NEVER EVER HAPPEN".format(org),"cn",{"cn":res[0].cn})
+    return res[0]
 
-@app.route('/login', methods=['GET', 'POST'])
+@app.route('/config/login', methods=['GET', 'POST'])
 def login():
     path = 'index'
     try:
@@ -303,116 +359,131 @@ def login():
     if request.method == 'POST':
         get_ldap()
         uid = request.form["username"]
-        res = g.ldap.query("(uid=%s)",uid,fields=["cn"])
+        res = g.ldap.query("(uid=%s)",uid)
         if len(res) == 1:
             if g.ldap.login(res[0].dn,request.form['password']):
                 session['uid'] = uid
                 session['username'] = res[0]['cn'] # for display purposes only
                 flash("Logged in successfully")
+                g.ldap.close()
                 return redirect(url_for(path))
         flash("Username or password incorrect")
+    g.ldap.close()
     return render_template('login.html',path=path)
 
 def require_login(path='index'):
     get_ldap()
     if not 'uid' in session:
         raise LoginRequiredError(path)
-    dn, name = get_acct_dn(session['uid'])
-    return (session['uid'], dn, name)
+    user = get_acct(session['uid'])
+    return user
 
 @app.errorhandler(LoginRequiredError)
 def login_required_error(err):
     flash("Login required for this page")
     return redirect(url_for('login',path=err.args[0]))
 
-@app.route('/logout')
+@app.route('/config/logout')
 def logout():
     session.pop('uid',None)
     session.pop('username',None)
     flash('Logged out successfully')
     return redirect(url_for('index'))
 
-@app.route('/acct/edit')
+@app.route('/config/acct/edit')
 def editacct():
-    _, dn, _ = require_login('/acct/edit')
-    res = g.ldap.query(base=dn)[0]
-    return render_template('editacct.html',mode='edit',error_field="",data=res)
+    user = require_login('editacct')
+    if user.is_class("athenorganisation"):
+        templ = "editorg.html"
+    else:
+        templ = "editperson.html"
+    g.ldap.close()
+    return render_template(templ,mode='edit',
+                           allow_unencrypted_home=False, # this can never be changed post-hoc
+                           error_field="",data=user)
 
-@app.route('/acct/update',methods=['POST'])
+@app.route('/config/acct/update',methods=['POST'])
 def updateacct():
     try:
-        uid, dn, cn = require_login('/acct/update')
-        res = g.ldap.query(base=dn)[0]
-        if res.is_class("athenorganisation"):
+        user = require_login('/acct/update')
+        if user.is_class("athenorganisation"):
+            assert request.form['type'] == "O"
             s = schema["org"]
+            typ = "O"
         else:
+            assert request.form["type"] == 'P'
             s = schema["person"]
+            typ = "P"
         data = validate_fields(request,'edit',s)
         if request.form.get("status_closed", "no") == "yes":
             data['status'] = 'X'
         data['timeLastUsed'] = myldap.ldap_time()
-        g.ldap.modify(dn,data)
+        g.ldap.modify(user,dn,data)
         flash("Record modified")
+        g.ldap.close()
         return redirect(url_for("index"))
     except AthenError as e:
         flash(e.err)
-        return render_template('editorg.html',mode='edit',error_field=e.field,data=e.data)
+        return render_template('editacct.html',mode='edit',type=typ,error_field=e.field,data=e.data)
 
 
 
-@app.route('/user/new')
+@app.route('/config/user/new')
 def newuser():
-    require_login('/user/new')
+    require_login('newuser')
     return render_template("edituser.html",mode='new',error=None,data={})
 
-@app.route('/user/edit')
+@app.route('/config/user/edit')
 def edituser():
-    u, dn, orgname = require_login('index')
-    user_dn = dn.add("cn",request.args['cn'])
+    user = require_login('index')
+    user_dn = user.dn.add("cn",request.args['cn'])
+    logging.debug("user_dn %r",user_dn)
     res = g.ldap.query(base=user_dn)[0]
+    logging.debug("res=%r",res)
+    g.ldap.close()
     return render_template('edituser.html',mode='edit',data=res,the_dn=str(user_dn))
 
 
-@app.route('/user/save',methods=['POST'])
+@app.route('/config/user/save',methods=['POST'])
 def saveuser():
     try:
-        u, org_dn, orgname = require_login('/user/new')
+        org = require_login('newuser')
         if request.form["givenName"] == "":
             cn = request.form['sn']
         else:
             cn = request.form["givenName"]+" "+request.form['sn']
         data = validate_fields(request,'new',schema['employee'])
-        user_dn = org_dn.add("cn",cn)
-        res = g.ldap.query(org_dn,"(&(objectclass=athenPerson)(cn=%s))",cn,fields=["cn"])
+        user_dn = org.dn.add("cn",cn)
+        res = g.ldap.query("(&(objectclass=athenPerson)(cn=%s))",cn,base=org.dn,fields=["cn"])
         if len(res) > 0:
             raise AthenError('user of same name exists','givenName',data)
         if 'mail' in data and data['mail'] != "":
             check_mail(data)
         else:
             # use same email as our master organisation
-            res = g.ldap.query(base=org_dn,fields=["mail"])
-            data['mail'] = res[0]['mail']
+            data['mail'] = org['mail']
         data['timeCreated'] = data['timeLastUsed'] = myldap.ldap_time()
         data['objectclass'] = ['person','organizationalPerson','inetOrgPerson','athenPerson']
-        data['status'] = 'A' # for Active, as we are being entered directly by user
-        g.ldap.add(the_dn,data)
+        data['status'] = 'C' # for Confirmed, as we are being entered directly by user
+        g.ldap.add(user_dn,data)
         flash('New person saved successfully')
+        g.ldap.close()
         return redirect(url_for('index'))
     except AthenError as e:
         flash(e.err)
         return render_template('edituser.html',mode='new',error_field=e.field,data=e.data)
 
-@app.route('/user/update',methods=["POST"])
+@app.route('/config/user/update',methods=["POST"])
 def updateuser():
     try:
-        u, org_dn, orgname = require_login('index')
+        org = require_login('index')
         if request.form["givenName"] == "":
             cn = request.form['sn']
         else:
             cn = request.form["givenName"]+" "+request.form['sn']
-        the_dn = org_dn.add("cn",cn)
+        the_dn = org.dn.add("cn",cn)
         data = validate_fields(request,'edit',schema['employee'])
-        res = g.ldap.query(org_dn,"(&(objectclass=athenPerson)(cn=%s))",cn,fields=["cn"])
+        res = g.ldap.query("(&(objectclass=athenPerson)(cn=%s))",cn,base=org.dn,fields=["cn"])
         if len(res) == 0:
             raise AthenError('User does not exist','givenName',data)
         if request.form.get("status_closed", "no") == "yes":
@@ -421,44 +492,64 @@ def updateuser():
         data['timeLastUsed'] = myldap.ldap_time()
         g.ldap.modify(the_dn,data)
         flash('Person updated successfully')
+        g.ldap.close()
         return redirect(url_for('index'))
     except AthenError as e:
         flash(e.err)
         return render_template('edituser.html',mode='edit',error_field=e.field,data=e.data)  
 
 
-@app.route('/user/list')
+@app.route('/config/user/list')
 def listusers():
-    u, org_dn, orgname = require_login('/user/list')
-    res = g.ldap.query("(objectclass=athenPerson}",base=dn,fields=['cn',"sn","medicalSpecialty","givenName","providerNumber"])
+    org = require_login('/user/list')
+    res = g.ldap.query("(objectclass=athenPerson)",base=org.dn,fields=['cn',"sn","medicalSpecialty","givenName","providerNumber"])
+    g.ldap.close()
     return render_template('listusers.html',users=res)
 
-@app.route('/acct/confirm',methods=["GET","POST"])
+@app.route('/config/confirm',methods=["GET","POST"])
 def confirmacct():
     if request.method == "POST":
         try:
-            u, dn, cn = require_login('index')
             nonce = clean_string(request.form.get('nonce',''))
             nonce = nonce.upper()
+            uid = clean_string(request.form['uid'])
             if len(nonce) != NONCELENGTH:
-                raise AthenError("Key is not valid","nonce",{"nonce":nonce})
+                raise AthenError("Key is not valid","nonce",{"nonce":nonce,'uid':uid})
             get_ldap()
-            res = g.ldap.query(base=dn,fields['nonce'])[0]
-            if res['nonce'] != nonce:
-                raise AthenError("Key is not valid","nonce",{"nonce":nonce})
+            res = g.ldap.query("(uid=%s)",uidfields=['nonce'])
+            if not res:
+                raise AthenError("User ID is not valid","nonce",{"nonce":nonce,"uid":uid})
+            if res[0]['nonce'] != nonce:
+                raise AthenError("Key is not valid","nonce",{"nonce":nonce,"uid":uid})
             g.ldap.modify(dn,{'status':"C",'timeLastUsed':myldap.ldap_time()})
-            if not app.config['TESTING']:
+            if not config.debug:
                 send_mail('Confirmed organisation',"{} has confirmed".format(cn))
             flash("Your account has been validated")
+            g.ldap.close()
             return redirect(url_for('index'))
         except AthenError as e:
             flash(e.err)
             return render_template("confirm.html",error_field=e.field,data=e.data)
     else:
-        return render_template("confirm.html",error_field="",data={"nonce":""})
+        data = {"nonce":"","uid":""}
+        if "uid" in session:
+            data['uid'] = session['uid']
+        return render_template("confirm.html",error_field="",data=data)
 
 
 if __name__ == '__main__':
-    # this is for testing mode
-    # proper running via application object
-    application.run(debug=config.debug)
+    if config.debug:
+        # use the internal toy webserver
+        root_controller = control.RootController(debug=True)
+        application.run(debug=True)
+    else:
+        # we are running For Real, as root
+        root_controller = control.RootController()
+        # now drop privilede
+        n = pwd.getpwnam("www-data")
+        os.setgid(n.pw_gid)
+        os.setuid(n.pw_uid)
+        # and run the server
+        import waitress
+        waitress.serve(application,unix_socket=config.http_socket)
+        

@@ -1,4 +1,4 @@
-dn: olcDatabase={1}hdb,cn=config
+dn: olcDatabase={1}mdb,cn=config
 changetype: modify
 replace: olcSuffix
 olcSuffix: dc=athen,dc=email
@@ -8,9 +8,10 @@ olcRootDN: cn=admin,dc=athen,dc=email
 -
 replace: olcAccess
 olcAccess: {0}to attrs=userpassword by dn.base="cn=admin,dc=athen,dc=email" write by anonymous auth
-olcAccess: {1}to attrs=nonce,uid,uidNumber,gidNumber,homeDirectory by dn.base="cn=admin,dc=athen,dc=email" write by * none
-olcAccess: {2}to attrs=objectclass val.exact="posixAccount" by dn.base="cn=admin,dc=athen,dc=email" write by * none
-olcAccess: {3}to * by dn.base="cn=admin,dc=athen,dc=email" write by * read
+olcAccess: {1}to attrs=nonce by dn.base="cn=admin,dc=athen,dc=email" write by * none
+olcAccess: {2}to attrs=uid,uidNumber,gidNumber,homeDirectory by dn.base="cn=admin,dc=athen,dc=email" write by dn.base="cn=operator,dc=athen,dc=email" read by * none
+olcAccess: {3}to attrs=objectclass val.exact="posixAccount" by dn.base="cn=admin,dc=athen,dc=email" write by dn.base="cn=operator,dc=athen,dc=email" read by * none
+olcAccess: {4}to * by dn.base="cn=admin,dc=athen,dc=email" write by * read
 
 dn: olcDatabase={-1}frontend,cn=config
 changetype: modify

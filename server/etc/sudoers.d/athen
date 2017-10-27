@@ -1,0 +1,5 @@
+Cmnd_Alias INFILTER=/usr/lib/athen/python/deliver.py
+Cmnd_Alias OUTFILTER=/usr/lib/athen/python/outfilter.py
+
+
+vmail	ALL=(ALL:ALL)	NOPASSWD: INFILTER OUTFILTER

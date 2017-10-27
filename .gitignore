@@ -2,3 +2,8 @@
 \#*\#
 .\#*
 *.pyc
+*~
+*.bak
+dist/
+latex_output/
+

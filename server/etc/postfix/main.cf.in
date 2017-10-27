@@ -18,8 +18,8 @@ append_dot_mydomain = no
 readme_directory = no
 
 # TLS parameters
-smtpd_tls_cert_file=/etc/ssl/athen.pem
-smtpd_tls_key_file=/etc/ssl/athen.key
+smtpd_tls_cert_file=/etc/ssl/certs/athen.pem
+smtpd_tls_key_file=/etc/ssl/private/athen.key
 smtpd_use_tls=yes
 smtpd_tls_protocols = !SSLv2, !SSLv3
 smtpd_tls_security_level=encrypt
@@ -30,12 +30,11 @@ smtp_tls_security_level=encrypt
 # See /usr/share/doc/postfix/TLS_README.gz in the postfix-doc package for
 # information on enabling SSL in the smtp client.
 
-smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination
+smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, defer_unauth_destination
 myhostname = HOSTNAME
 alias_maps = hash:/etc/aliases
 alias_database = hash:/etc/aliases
-mydestination = HOSTNAME, localhost.localdomain, localhost
-relayhost = 
+mydestination = localhost.localdomain, localhost
 mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
 mailbox_size_limit = 0
 recipient_delimiter = +
@@ -45,5 +44,9 @@ inet_protocols = all
 smtpd_sasl_type = dovecot
 smtpd_sasl_path = private/auth
 
-mailbox_command = /home/ian/athen/adm/spool-mail.sh
-filter_destination_recipient_limit
+#mailbox_command = /home/ian/athen/adm/spool-mail.sh
+infilter_destination_recipient_limit = 1
+virtual_mailbox_domains = HOSTNAME
+virtual_transport = infilter
+#virtual_alias_maps = inline:{ postmaster@HOSTNAME=vmail root@HOSTNAME=vmail admin@HOSTNAME=vmail } 
+

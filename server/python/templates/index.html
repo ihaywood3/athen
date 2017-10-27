@@ -3,13 +3,14 @@
 {% block body %}
 
     <p>This is the main public server for ATHEN, the Autonomous Transport for Heath: Encrypttion Network. For what this is all about see
-      <a href="/rationale.html">here</a></p>
-    <p>Search for existing organisations:
-    <form method="get" action="/searchorg.html">
+      <a href="/config/rationale.html">here</a></p>
+    <p>Search for existing organisations or individuals:
+    <form method="get" action="/config/acct/search">
       <input text="text" name="key" length="10" />
     </form>
     </p>
     <p>
-      <a href="/org/new">Register</a> a new organisation.
+      Register as an <a href="/config/acct/new?type=O">organisation</a> or as an 
+      <a href="/config/acct/new?type=P">individual person.</a>
     </p>
 {% endblock %}

@@ -3,28 +3,25 @@
 {% if mode == "new" %}
 Create New Organisation
 {% else %}
-Edit Organisation
+Edit Organisation: {{ data.cn }}
 {% endif %}
 {% endblock %}
 {% block body %}
 {% if mode == "new" %}
-<form action="/org/save" method="post" enctype="application/x-www-form-urlencoded">
+<form action="/config/acct/save" method="post" enctype="application/x-www-form-urlencoded">
 {% else %}
-<form action="/org/update" method="post" enctype="application/x-www-form-urlencoded">
+<form action="/config/acct/update" method="post" enctype="application/x-www-form-urlencoded">
   {% endif %}
-
+<input type="hidden" name="type" value="O" />
   <p>
-    {% if error != "" %}
-    <span class="error">{{ error }}</span></p><p>
-    {% endif %}
     <table class="formfields">
       <tr>
-	<th>Name</th>
+	<th>Organisation Name</th>
 	<td>
 	  {% if mode == "new" %}
 	  <input type="text" name="o" length="20" value="{{ data.o }}" />
 	  {% else %}
-	  {{ o }}
+	  {{ data.o }}
 	  {% endif %}
 	</td>
       </tr>
@@ -38,7 +35,7 @@ Edit Organisation
       </tr>
       <tr>
 	<th>Postcode</th>
-	<td><input type="text" length="10" value="{{ data.postalCode }}" name="postalCode" /></td>
+	<td><input type="number" length="4" min="0" max="9999" value="{{ data.postalCode }}" name="postalCode" /></td>
       </tr>
       <tr>
 	<th>State/Territory</th>
@@ -48,32 +45,36 @@ Edit Organisation
 	    </select>
       <tr>
 	<th>Telephone</th>
-	<td><input type="text" length="20" value="{{ data.telephoneNumber }}" name="telephoneNumber" /></td>
+	<td><input type="tel" length="20" value="{{ data.telephoneNumber }}" name="telephoneNumber" /></td>
       </tr>
       <tr>
 	<th>Fax</th>
-	<td><input type="text" length="20" value="{{ data.facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
+	<td><input type="tel" length="20" value="{{ data.facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
       </tr>
       <tr>
 	<th>Type</th>
 	<td>
 	  <select name="businessCategory">
-	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health'],data['businessCategory'])|safe}}
+	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health','Community Health','headspace centre'],data.get('businessCategory',None))|safe}}
 	    </select>
 	</td>
-      </tr>
-      <tr>
-	<th>Password</th>
-	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
-      </tr>
-      <tr>
-	<th>Password (repeat)</th>
-	<td><input type="password" length="20" value="{{ userPassword_repeat }}" name="userPassword_repeat" /></td>
       </tr>
       {% if mode == "edit" %}
       <tr>
 	<th>Status</th>
-	<td><label for="status_closed"><input type="check" name="status_closed" value="yes" id="status_closed" />Mark as closed</label></td>
+	<td>
+	  <label for="status_closed"><input type="checkbox" name="status_closed" value="yes" id="status_closed">Mark as closed</label>
+	</td>
+      </tr>
+      {% else %}
+      <tr>
+	<th>Password</th>
+	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" />
+	<a class="smalllink" href="/config/rationale.html#password">WARNING</a></td>
+      </tr>
+      <tr>
+	<th>Password (repeat)</th>
+	<td><input type="password" length="20" value="{{ userPassword_repeat }}" name="userPassword_repeat" /></td>
       </tr>
       {% endif %}
       <tr>

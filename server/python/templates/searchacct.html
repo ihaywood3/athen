@@ -1,16 +1,39 @@
 {% extends "base.html" %}
 {% block title %}Search{% endblock %}
 {% block body %}
-    <p>Search for existing organisations:
-    <form method="get" action="/searchorg.html">
+    <p>Search for existing organisations/users:
+    <form method="get" action="/config/acct/search">
       <input text="text" name="key" length="10" />
     </form>
     </p>
     <p>
-      {% if len(result) > 0 %}
-      <table><tr><th>Organisation</th><th>Town</th><th>Category</th></tr>
+      {% if result %}
+      <table><tr><th>Organisation/Person</th><th>Town</th><th>Category</th><th>Status</th></tr>
 	{% for row in result %}
-	<tr><td><a href="/org/show?o={{row.o|urlencode}}">{{ row.o }}</a></td><td>{{ ro.l }}</td><td>{{ row.businessCategory }}</td></tr>
+	<tr>
+	  <td>
+	    <a href="/config/acct/show?dn={{row.dn.to_str()|urlencode}}">{{ row.cn }}</a>
+	  </td>
+	  <td>{{ row.l }}</td>
+	  <td>
+	    {% if row.has_key('o') %}
+	    {{ row.businessCategory }}
+	    {% else %}
+	    {{ row.medicalSpecialty }}
+	    {% endif %}
+	  </td>
+    <td>
+      {% if row['status'] == 'P' %}
+      <span class="provisional" title="The account is registered but identity not confirmed">PROVISIONAL</span>
+      {% elif row['status'] == 'C' %}
+      <span class="confirmed" title="The account is registered and identity confirmed">CONFIRMED</span>
+      {% elif row['status'] == 'X' %}
+      <span class="expired" title="The account has requested its entry be closed">CLOSED</span>
+      {% else %}
+      Unknown status: {{ row.status }}
+      {% endif %}
+    </td>
+	</tr>
 	{% endfor %}
       </table>
       {% else %}
@@ -18,5 +41,5 @@
       {% endif %}
     </p>
     <p>
-      <a href="/org/new">Register</a> a new organisation.</p>
+      <a href="/acct/new">Register</a> a new account.</p>
 {% endblock %}

@@ -1,47 +1,52 @@
 #!/bin/bash
 
+SPOOLMAX=51200 # 50 meg
+
 # the main delivery script
-
-# postfix should set $USER and a few other envs
-# we should be running as the receipient user
-# (presumably LDAP lookup has occurred to discover this?)
-# see http://www.postfix.org/postconf.5.html#mailbox_command
-
+# we should be running as user vmail
+# username set on $1
 cd `dirname $0`
 . ./utils.sh
 
 HOST=$(cat /etc/mailname)
-
-if [ ! -d /home/athen/spool/$USER ] ; then
-    mkdir -p /home/athen/spool/$USER
-    chmod 700 /home/athen/spool/$USER
-    #chown $USER /home/athen/spool/$USER
-fi
-
+USER=$1
+EMAIL=$USER@$HOST
+UHOME=/home/athen/home/$USER
+export HOME=/home/vmail
 
 log "delivery script for $USER"
 log "id = `id`"
-log "whoami = `whoami'"
+log "whoami = `whoami`"
 
-if [ -e $HOME/private.key ] ; then
-    # we are logged in, so deliver directly
-    log "homedir is mounted, passing straight to Dovecot"
-    exec /usr/lib/dovecot/deliver -d $USER
+if [ -e $UHOME/mail ] ; then
+    # we are logged in, so deliver
+    log "homedir is mounted, passing straight to Python filter and then Dovecot deliver"
+    # use the shim to become the target user
+    exec $UHOME/user-shim deliver $USER --direct
 else
-    if [ ! -r /home/athen/home/$USER.img ] ;then
+    if [ ! -r /home/athen/home/$USER.img ] ; then
 	exit 67  # no such user. This shouldn't happen
     fi
-    cd /home/athen/spool/$USER
+    cd /home/vmail/spool/$USER
     LOCKFILE=/var/lock/athen.$USER.lock
     (
-	flock 9 || (
+	flock -w 10 9 || (
 	    echo Couldnt get lock on $LOCKFILE >&2
 	    log "spool: Couldnt get lock on $LOCKFILE"
 	    exit 75 # temporary failure
 	)
-	FILE=`mktemp -p /home/athen/spool/$USER --suffix=.mail`
+	spool_size $USER
+	if (( SPOOLSIZE > SPOOLMAX )) ; then # user has more than SPOOLMAX
+	    echo Spool bigger than $SPOOLMAX k, rejecting mail
+	    log " Spool bigger than $SPOOLMAX k, rejecting mail"
+	    exit 75 # temporary failure
+	fi
+	FILE=$(mktemp -p /home/vmail/spool/$USER --suffix=.tmpmail)
 	log "saving email to temp FILE=$FILE"
-	python ../python/filter.py $USER | openssl smime -encrypt -outform DER -stream -out $FILE /home/athen/home/$USER.pem
+	# encrypt (using vmail's keying) to target user
+	gpg -r "$EMAIL" --no-tty --batch --yes --trust-model tofu --encrypt > $FILE
+	# save and then rename to guard against reader catching half-written file
+	mv $FILE $(basename $FILE .tmpmail).mail 
     ) 9>$LOCKFILE
     rm -f $LOCKFILE
 fi

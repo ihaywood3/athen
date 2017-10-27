@@ -1,0 +1,9 @@
+table.log tr:hover { background-color: lightblue; }
+table.log tr.debug { color: lightgrey; }
+table.log tr.normal { color: black; }
+table.log tr.error { color: red; font-weight: bold; }
+
+span.error { color: red; font-weight: bold; }
+span.ok { color: green; }
+span.pending { color: blue; }
+    

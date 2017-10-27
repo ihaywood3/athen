@@ -8,7 +8,7 @@ DIR=`dirname $0`
 log "umount-all.sh"
 
 OLDPWD=$(pwd)
-
+GPGSCRIPT=$OLDPWD/gpg.sh
 TMPDIR=/tmp/athen.umount.$$
 mkdir $TMPDIR
 chmod 700 $TMPDIR

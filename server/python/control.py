@@ -1,9 +1,9 @@
-
+#!/bin/bash
 # creates a background process which stays root and does the root-required work 
 # creating user accounts
 # and launches webserver as low-priviledge user
 
-import os, pwd, multiprocessing, subprocess
+import os, pwd, multiprocessing, subprocess, select, logging
 #import cherrypy
 import util
 
@@ -20,26 +20,32 @@ class RootController:
                                     stderr=subprocess.STDOUT)
 
     def run(self,cmd):
-        cmd = "|".join(i.replace("\\","\\\\").replace("|","\\|") for i in cmd)
-        self.pro.stdin.write(cmd+"\n")
+        cmd = b"|".join(bytes(str(i),"utf-8").replace(b"\\",b"\\\\").replace(b"|",b"\\|") for i in cmd)
+        self.pro.stdin.write(cmd+b"\n")
         self.pro.stdin.flush()
         l = self.pro.stdout.readline()
-        lc = l.strip().split(":")
+        logging.debug(repr(l))
+        lc = l.strip().split(b":")
         err = False
         errtxt = ""
-        while lc[0] != "FINISH":
-            if lc[0] == "PROGRESS":
-                yield (int(lc[1]),lc[2])
-            elif lc[0] == "ERROR":
+        while lc[0] != b"FINISH":
+            if lc[0] == b"PROGRESS":
+                yield (int(lc[1]),str(lc[2],"utf-8"))
+            elif lc[0] == b"ERROR":
                 err = True
-                errtxt += lc[1]
+                errtxt += str(lc[1],"utf-8")
+                logging.debug("errtxt %s",repr(lc[1]))
             else:
-                errtxt += l # it might be some error output, so save it
+                errtxt += str(l,"utf-8") # it might be some error output, so save it
             l = self.pro.stdout.readline()
-            lc = l.strip().split(":")
+            logging.debug(repr(l))
+            lc = l.strip().split(b":")
         if err:
             raise util.AthenError(errtxt)
 
     def quit(self):
-        self.pro.stdin.write("QUIT\n")
-        self.pro.wait()
+        self.pro.stdin.write(b"QUIT\n")
+        self.pro.stdin.flush()
+        self.pro.stdin.close()
+        self.pro.stdout.close()
+        self.pro.wait(timeout=10)

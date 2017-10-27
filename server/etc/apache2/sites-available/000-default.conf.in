@@ -9,7 +9,7 @@
 	ServerName HOSTNAME
 
 	ServerAdmin webmaster@HOSTNAME
-	Redirect permanent / https://HOSTNAME/
+	Redirect permanent / https://HOSTNAME/config/index
 
 	# Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
 	# error, crit, alert, emerg.

@@ -1,0 +1,55 @@
+Date: Wed, 13 Sep 2017 18:56:13 +1000
+From: Ian Haywood <ian@haywood.id.au>
+Message-ID: <df96b0ae-9582-f347-1d23-011af3b65227@haywood.id.au>
+Subject: Return Receipt (displayed) -test with rreceipot
+To: Test Organisation <test.organisation@athen.twilightparadox.com>
+References: <b33eb4618e3a8b20154cff848e59f013@testserver.homenet.org>
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=disposition-notification;
+	boundary="------------mdnFAE058878E8EA5950C77C7FE"
+
+--------------mdnFAE058878E8EA5950C77C7FE
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This is a Return Receipt for the mail that you sent to invoices@haywood.id.au.
+
+Note: This Return Receipt only acknowledges that the message was displayed on the recipient's computer. There is no guarantee that the recipient has read or understood the message contents.
+
+--------------mdnFAE058878E8EA5950C77C7FE
+Content-Type: message/disposition-notification; name="MDNPart2.txt"
+Content-Disposition: inline
+Content-Transfer-Encoding: 7bit
+
+Reporting-UA: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Thunderbird/52.3.0
+Final-Recipient: rfc822;ian@haywood.id.au
+Original-Message-ID: <b33eb4618e3a8b20154cff848e59f013@testserver.homenet.org>
+Disposition: manual-action/MDN-sent-manually; displayed
+
+--------------mdnFAE058878E8EA5950C77C7FE
+Content-Type: text/rfc822-headers; name="MDNPart3.txt"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+Return-Path: <ian@haywood.id.au>
+X-Original-To: invoices@haywood.id.au
+Delivered-To: invoices@haywood.id.au
+Received: from [192.168.1.5] (ppp118-209-163-198.lns20.mel8.internode.on.net [118.209.163.198])
+	(using TLSv1.2 with cipher ECDHE-RSA-AES128-GCM-SHA256 (128/128 bits))
+	(No client certificate requested)
+	by haywood.id.au (Postfix) with ESMTPSA id 0D80C80503
+	for <invoices@haywood.id.au>; Wed, 13 Sep 2017 10:52:38 +0200 (CEST)
+To: invoices@haywood.id.au
+From: Ian Haywood <ian@haywood.id.au>
+Subject: test with rreceipot
+Message-ID: <2b17c0a5-bf1c-3a6a-6c1c-42536a374d0c@haywood.id.au>
+Disposition-Notification-To: Ian Haywood <ian@haywood.id.au>
+Date: Wed, 13 Sep 2017 18:56:00 +1000
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101
+ Thunderbird/52.3.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 7bit
+Content-Language: en-US
+
+--------------mdnFAE058878E8EA5950C77C7FE--

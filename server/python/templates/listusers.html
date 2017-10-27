@@ -1,3 +1,4 @@
+{% extends "base.html" %}
 {% block title %}List of Users{% endblock %}
 {% block body %}
 <p><table>
@@ -7,10 +8,10 @@
       <td>{{ u.givenName }}</td>
       <td>{{ u.sn }}</td>
       <td>{{ u.medicalSpecialty }}</td>
-      <td>{{ u.providerNumber }}</td>
-      <td><a href="/users/edit?cn={{u.cn|urlencode}}">Edit</a></td>
+      <td><a href="/config/user/edit?cn={{u.cn|urlencode}}">Edit</a></td>
     </tr>
     {% endfor %}
   </table>
 </p>
-{% end block %}
+<p><a href="/config/user/new">New Employee</a></p>
+{% endblock %}

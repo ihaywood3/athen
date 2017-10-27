@@ -9,9 +9,7 @@
 # service type  private unpriv  chroot  wakeup  maxproc command + args
 #               (yes)   (yes)   (yes)   (never) (100)
 # ==========================================================================
-smtp      inet  n       -       -       -       -       smtpd
-  -o milter_macro_daemon_name=ORIGINATING
-  -o content_filter=filter:dummy
+smtp      inet  n       -       -       -       -       smtpd -v
 #smtp      inet  n       -       -       -       1       postscreen
 #smtpd     pass  -       -       -       -       -       smtpd
 #dnsblog   unix  -       -       -       -       0       dnsblog
@@ -21,10 +19,15 @@ submission inet n       -       -       -       -       smtpd -v
   -o smtpd_tls_security_level=encrypt
   -o smtpd_sasl_auth_enable=yes
   -o smtpd_reject_unlisted_recipient=no
-  -o smtpd_relay_restrictions=permit_sasl_authenticated,reject
-filter    unix  -       n       n       -       10      pipe
-    flags=Rq user=vmail:vmail null_sender= size=50m 
-    argv=/home/ian/athen/adm/spool-mail.sh ${user}
+  -o smtpd_relay_restrictions=permit_sasl_authenticated,permit_mynetworks,reject
+  -o content_filter=outfilter:dummy  
+infilter    unix  -       n       n       -       10      pipe
+    flags=RqD user=vmail:athenusers null_sender= size=50000000
+    argv=/usr/local/lib/athen/adm/spool-mail.sh ${user}
+outfilter    unix  -       n       n       -       10      pipe
+    flags=Rq user=vmail:athenusers null_sender= size=50000000
+    argv=/home/athen/home/${sasl_username}/user-shim outgoing ${sasl_username}
+#secure	unix  n     -       -       -       -      
 #secure	unix  n     -       -       -       -       smtpd -v
 #  -o smtp_tls_security_level=encrypt
 #  -o syslog_name=postfix/secure

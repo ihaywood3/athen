@@ -42,10 +42,22 @@ div#sidebar ul {
     list-style: none;
 }
 
-table.formfields td input {
+table.formfields input[type=text] {
+    width: 20em;
+}
+table.formfields input[type=password] {
     width: 20em;
 }
 
+table.formfields input[type=tel] {
+    width: 20em;
+}
+
+
 table.formfields th,td {
     text-align: left;
+}
+
+.small {
+    font-size: 0.8em;
 }

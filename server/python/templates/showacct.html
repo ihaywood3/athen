@@ -1,49 +1,59 @@
 {% extends "base.html" %}
-{% block title %}Organisation {{ org.o }}{% endblock %}
+{% block title %}{{ acct.cn }}{% endblock %}
 {% block body %}
 <p>
 <table>
   <tr>
+    <th>Type</th>
+    <td>
+      {% if org %}
+      Organisation
+      {% else %}
+      Person
+      {% endif %}
+  </td></tr>
+  <tr>
     <th>Name</th>
-    <td>{{ org.o }}</td>
+    <td>{{ acct.cn }}</td>
   </tr>
   <tr>
     <th>Street</th>
-    <td>{{ org.st }}</td>
+    <td>{{ acct.street }}</td>
   </tr>
   <tr>
     <th>Town</th>
-    <td>{{ org.l }} {{org.postalCode }}</td>
+    <td>{{ acct.l }} {{acct.postalCode }} {{ acct.st }}</td>
   </tr>
   <tr>
     <th>Telephone</th>
-    <td>{{ org.telephoneNumber }}</td>
+    <td>{{ acct.telephoneNumber }}</td>
   </tr>
   <tr>
     <th>Fax</th>
-    <td>{{ org.facsimileTelephoneNumber }}</td>
+    <td>{{ acct.facsimileTelephoneNumber }}</td>
   </tr>
   <tr>
     <th>Email</th>
-    <td>{{ org.displayEmail }}</td>
+    <td>{{ acct.displayEmail }}</td>
   </tr>
   <tr>
     <th>Status</th>
     <td>
-      {% if org['status'] == 'P' %}
-      <span class="provisional" title="The organisation is registered but identity not confirmed">PROVISIONAL</span>
-      {% elif org['status'] == 'C' %}
-      <span class="confirmed" title="The organisation is registered and identity confirmed">CONFIRMED</span>
-      {% elif org['status'] == 'X' %}
-      <span class="expired" title="The organisation has requested its entry be closed">CLOSED</span>
+      {% if acct['status'] == 'P' %}
+      <span class="provisional" title="The account is registered but identity not confirmed">PROVISIONAL</span>
+      {% elif acct['status'] == 'C' %}
+      <span class="confirmed" title="The account is registered and identity confirmed">CONFIRMED</span>
+      {% elif acct['status'] == 'X' %}
+      <span class="expired" title="The account has requested its entry be closed">CLOSED</span>
       {% else %}
-      Unknown status: {{ org.status }}
+      Unknown status: {{ acct.status }}
       {% endif %}
     </td>
   </tr>
 </table>
 </p>
 
+{% if users %}
 <p><table>
     <tr><th>Name</th><th>Surname</th><th>Profession</th></tr>
     {% for u in users %}
@@ -55,5 +65,6 @@
     {% endfor %}
   </table>
 </p>
+{% endif %}
 
 {% endblock %}

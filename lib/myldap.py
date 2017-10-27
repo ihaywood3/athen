@@ -2,8 +2,8 @@
 An LDAP wrapper that is a bit more Pythonic and easier to manage than the base interface
 """
 
-import ldap, ldap.filter
-import time
+import ldap3, logging
+import time, re
 import subprocess
 
 FIELD_CONVERSIONS = [('organization', 'o'), ('surname', 'sn'), ('cn', 'commonName')]
@@ -13,13 +13,28 @@ PUBLIC_LDAP_SERVER='ldaps://localhost/'
 PRIVATE_LDAP_SERVER='ldapi:///'
 PRIVATE_LDAP_USER='cn=admin,dc=athen,dc=email'
 
+SORTABLE_FIELD=re.compile(r"^\{([0-9]+)\}(.*)")
+
+class MyLDAPException(Exception):
+    pass
+
+def escape_filter_chars(text):
+    escaped = text.replace('\\', '\\5c')
+    escaped = escaped.replace('*', '\\2a')
+    escaped = escaped.replace('(', '\\28')
+    escaped = escaped.replace(')', '\\29')
+    escaped = escaped.replace('\x00', '\\00')
+    return escaped
+
+
 def hash_password(passwd):
     """created a salted-SHA1 "SSHA" password hash"""
     # FIXME: find a less fugly way of doing this
     pro = subprocess.Popen(["/usr/sbin/slappasswd","-n","-T","/dev/stdin"],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
-    out, err = pro.communicate(passwd)
-    if err != "":
-        raise LDAPError(err)
+    out, err = pro.communicate(bytes(passwd,"utf-8"))
+    if err != b"":
+        logging.error(err)
+        raise MyLDAPException(err)
     return out
 
 def ldap_time():
@@ -31,6 +46,21 @@ def makelist(v):
     else:
         return v
 
+def _break_field(l):
+    m = SORTABLE_FIELD.match(l)
+    if m:
+        return (int(m.group(1)),m.group(2))
+    else:
+        return (0,l)
+    
+def ldap_sort(l):
+    """sort a list of string fields using the {n}foo convention
+
+    >>> ldap_sort(["{3}burble", "{2}baz", "{1}foo"])
+    [(1, 'foo'), (2, 'baz'), (3, 'burble')]
+    """
+    return sorted((_break_field(i) for i in l),key=lambda x: x[0])
+    
 class Ldap_DN:
     """Wrapper around LDAP domain paths
     """
@@ -42,10 +72,14 @@ class Ldap_DN:
         else:
             self.dn = [tuple(i.split('=',1)) for i in dn.split(",")]
 
-    def __str__(self):
+    def to_str(self):
         """Return to standard notation"""
-        return ",".join([ldap.filter.filter_format("%s=%s",[i[0],i[1]]) for i in self.dn])
+        return ",".join([escape_filter_chars(i[0])+"="+escape_filter_chars(i[1]) for i in self.dn])
 
+
+    def __str__(self):
+        return self.to_str()
+    
     def __getitem__(self, x):
         """Return first domain component matching field name x"""
         for a, b in self.dn:
@@ -71,26 +105,31 @@ class Ldap_Row:
 
     def __init__(self, the_row, conn):
         self.conn = conn
-        dn, self.vals = the_row
+        dn = the_row['dn']
+        self.vals = the_row['attributes']
         self.dn = Ldap_DN(dn)
         self.nvals = {}
         for k, v in list(self.vals.items()):
             k = self.normalise_field_name(k)
-            if len(v) == 1:
-                v = v[0]
             self.nvals[k] = v
-        self.modlist = []
+        self.modlist = {}
         
-    def get_field(self, f):
+    def get_field(self, f, default="",as_list=False):
         f = self.normalise_field_name(f)
         if f in self.nvals:
-            return self.nvals[f]
+            r = self.nvals[f]
+            if not as_list and len(r) == 1:
+                r = r[0]
+            return r
         else:
-            return ""
+            return default
+
+    def get(self, f, default):
+        self.get_field(f, default)
     
     def has_key(self, f):
         f = self.normalise_field_name(f)
-        return self.nvals.has_key(f)
+        return f in self.nvals
 
     def __getattr__(self, name):
         return self.get_field(name)
@@ -100,17 +139,17 @@ class Ldap_Row:
     
     def set_field(self, name, val):
         nname = self.normalise_field_name(name)
-        if self.nvals[nname] == val: return
+        if nname in self.nvals and self.get_field(nname) == val: return
         self.nvals[nname] = val
         self.vals[name] = val
-        modlist.append((ldap.MOD_REPLACE,name,makelist(val)))
+        self.modlist[name] = val
         
     def __setitem__(self, name, val):
         self.set_field(name, val)
         
     def commit(self):
         self.conn.modify(self.dn,self.modlist)
-        self.modlist = []
+        self.modlist = {}
         
     def normalise_field_name(self, name):
         name = name.lower()
@@ -125,30 +164,48 @@ class Ldap_Row:
         return "<Ldap_Row: {}, Vals: {}>".format(repr(self.dn), repr(self.nvals))
 
     def is_class(self, klass):
-        klass = lower(klass)
+        klass = klass.lower()
         oc = self.get_field('objectclass')
         if type(oc) is list:
             for i in oc:
-                if lower(i) == klass:
+                if i.lower() == klass:
                     return True
         else:
-            if lower(str(oc)) == klass:
+            if str(oc).lower() == klass:
                 return True
         return False
     
 class LDAP:
     """a thin wrapper around the LDAP connector
+
+
+    >>> c = LDAP()
+    >>> c.query("(o=Test Org Eight)",base="dc=athen,dc=email",fields=["businessCategory"])
+    [<Ldap_Row: <LDAP DN: o=Test Org Eight,mxDomain=athen.email,dc=athen,dc=email>, Vals: {'businesscategory': 'General Practice'}>]
+    >>> c.close()
+    >>> import config
+    >>> c = LDAP(dn=config.ldap_user,password=config.password,default_base=config.base_dn)
+    >>> newdn = config.base_dn.add("o","Fake Org")
+    >>> c.add(newdn,{"objectclass":"organization","o":"Fake Org"})
+    >>> c.query(base=newdn)
+    [<Ldap_Row: <LDAP DN: o=Fake Org,mxDomain=athen.email,dc=athen,dc=email>, Vals: {...}>]
+    >>> c.delete(newdn)
+    >>> c.close()
     """
 
-    def __init__(self, host="ldapi://",dn="", password="", default_base=""):
+    def __init__(self, host="localhost",dn="", password="", default_base=""):
         """
-        host: host to connect tom, default is local UNIX socket
+        host: host to connect to, default is local UNIX socket
         dn: the dn of the user to log in as, default anonymous bind
         password: the password
         default_base: default base DN for searches
         """
-        self.conn = ldap.initialize(host)
-        self.conn.simple_bind_s(dn,password)
+        self.server = ldap3.Server(host)
+        if dn:
+            self.conn = ldap3.Connection(self.server,dn,password,auto_bind=True)
+        else:
+            self.conn = ldap3.Connection(self.server)
+            self.conn.bind()
         self.default_base = default_base
 
     def query(self,query=None,*args,**kwargs):
@@ -157,62 +214,101 @@ class LDAP:
         else:
             query_base = kwargs['base']
         if query is None:
-            scope = ldap.SCOPE_BASE
-            query = "(&)" # the "absolute true" LDAP expression
+            scope = ldap3.SEARCH_SCOPE_BASE_OBJECT
+            query = "(objectclass=*)" 
         elif 'node' in kwargs and kwargs['node'] is True:
-            scope = ldap.SCOPE_BASE
+            scope = ldap3.SEARCH_SCOPE_BASE_OBJECT
         else:
-            scope = ldap.SCOPE_SUBTREE
+            scope = ldap3.SEARCH_SCOPE_WHOLE_SUBTREE
         if 'fields' in kwargs:
             fields = kwargs['fields']
         else:
-            fields = ["*"]
-        query = ldap.filter.filter_format(query,args)
-        res = self.conn.search_s(str(query_base),scope,query,fields)
-        return [Ldap_Row(x, self) for x in res]
+            fields = ldap3.ALL_ATTRIBUTES
+        args = tuple(escape_filter_chars(i) for i in args)
+        if args:
+            query = query % args
+        logging.debug("ldap query '{}' using base '{}'".format(query,str(query_base)))
+        self.conn.search(str(query_base),query,attributes=fields)
+        return [Ldap_Row(x, self) for x in self.conn.response]
 
 
     def add(self, dn, data):
-        modlist = []
-        for k, v in list(data.items()):
-            modlist.append((k, makelist(v)))
-        self.conn.add_s(str(dn),modlist)
+        oc = data.pop("objectclass")
+        res = self.conn.add(str(dn),oc,data)
+        if not res:
+            logging.debug("LDAP add failed {}".format(repr(self.conn.result)))
+            raise MyLDAPException(self.conn.result)
 
     def modify(self, dn, modlist):
-        if type(modlist) is dict:
-                modlist = [(ldap.MOD_REPLACE, k, makelist(v)) for k, v in list(modlist.items())]
-        self.conn.modify_s(str(dn), modlist)
+        modlist = {k:(ldap3.MODIFY_REPLACE, makelist(modlist[k])) for k in modlist}
+        self.conn.modify(str(dn), modlist)
+        res = self.conn.add(str(dn),oc,data)
+        if not res:
+            logging.debug("LDAP modify failed {}".format(repr(self.conn.result)))
+            raise MyLDAPException(self.conn.result)
+        
+    def get_next_uid(self,the_base,recurring=False):
+        """Use a special uidNext node in the LDAP DB to generate the next valid uidNumber
 
-    def get_next_uid(self,recurring=False):
-        """Use a special uidNext node in the LDAP DB to generate the next valid uidNumber"""
-        dn = "cn=uidNext,dc=athen,dc=email"
-        res = self.query(base=dn,fields=['uidNext'])
-        olduid = int(res[0]['uidNext'])
+        >>> import config
+        >>> c = LDAP(dn=config.ldap_user,password=config.password,default_base=config.public_base_dn)
+        >>> c.modify("cn=uidNext,dc=athen,dc=email",{"uidNumber":1105})
+        >>> c.get_next_uid(config.public_base.dn)
+        1106
+        >>> c.close()
+        """
+        res = self.query("(objectclass=uidNext)",fields=['uidNext'],base=the_base)
+        olduid = int(res[0]['uidNumber'] or 0)
         newuid = olduid+1
-        modlist = [(ldap.MOD_ADD, "uidNext", str(newuid)),(ldap.MOD_DELETE, "uidNext", str(olduid))]
+        modlist = {"uidNext":[(ldap3.MODIFY_ADD, [str(newuid)]),(ldap3.MODIFY_DELETE, [str(olduid)])]}
         try:
-            self.conn.modify_s(dn,modlist)
-        except ldap.LDAPError: # our atomic add/delete failed: we tried to change while someone else was changing
+            # FIXME: not atomic, need newer version ldap3?
+            ret = self.conn.modify(res[0].dn,{"uidNumber":(ldap3.MODIFY_REPLACE,[str(newuid)])})
+        except ldap3.LDAPException: # our atomic add/delete failed: we tried to change while someone else was changing
             if recurring:
                 raise
             else:
                 time.sleep(2)
-                newuid = self.get_next_uid(self,True)
+                newuid = self.get_next_uid(self,the_base,recurring=True)
         return newuid
 
     def login(self,dn,password):
-        """Do a test bind for logging in"""
+        """Do a test bind for logging in
+        >>> import config
+        >>> c = LDAP()
+        >>> c.login(config.ldap_user,config.password)
+        True
+        >>> c.login(config.ldap_user,"its wrong")
+        False
+"""
         try:
-            newconn = ldap.initialize(self.host)
-            newconn.simple_bind_s(dn,password)
-            newconn.unbind_s()
+            newconn = ldap3.Connection(self.server,dn,password,auto_bind=True)
+            newconn.unbind()
             return True
-        except ldap.LDAPError:
+        except ldap3.LDAPException:
             return False
 
     def delete(self, dn):
-        self.conn.delete_s(str(dn))
+        self.conn.delete(str(dn))
 
     def close(self):
-        self.conn.unbinds_s()
-        
+        self.conn.unbind()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, typ, val, tb):
+        try:
+            self.conn.unbind()
+        except: pass
+
+    def __del__(self):
+        try:
+            self.conn.unbind()
+        except: pass
+
+            
+if __name__ == "__main__":
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE|doctest.ELLIPSIS)
+

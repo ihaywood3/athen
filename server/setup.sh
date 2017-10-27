@@ -21,9 +21,11 @@ if [ ! -t 0 ] ; then
     exit 1
 fi
 apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-ldap libpam-script python-ldap debconf-utils roundcube roundcube-mysql- roundcube-sqlite3 slapd ldap-utils python-m2crypto python-ldap python-flask libapache2-mod-wsgi apache2-utils
+DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-ldap dovecot-lmtpd libpam-script python3-ldap debconf-utils roundcube roundcube-mysql- roundcube-sqlite3 slapd ldap-utils python3-flask apache2 libapache2-mod-php5 python3-lxml python3-bs4 python3-waitress libpam-ldapd python3-dateutil
 cat ./debconf.keys | debconf-set-selections
 DEBIAN_FRONTEND=noninteractive apt-get -y install postfix postfix-ldap 
+
+# FXIME: currently using compiled bleeding-edge gnupg and its python binding 'gpg' from offical GPGME
 
 
 DIR=`dirname $0`
@@ -50,13 +52,15 @@ cp -f /etc/resolv.conf /var/spool/postfix/etc
 
 
 if [ ! -d /home/athen ] ; then
-    groupadd -g 2002 athen ; useradd -g 2002 -m -u 2002 -s /bin/bash athen
-    groupadd -g 2001 vmail ; useradd -g 2001 -m -u 2001 -s /bin/bash vmail
+    groupadd -g 2000 athenusers
+    useradd -g 2000 -m -u 2001 -s /bin/bash athen
+    useradd -g 2000 -m -u 2002 -s /bin/false vmail
 fi
 
 if [ ! -d /var/log/athen ] ; then
     mkdir /var/log/athen
-    chown athen:athen /var/log/athen
+    chown athen:vmail /var/log/athen
+    chmod go+rw /var/log/athen/
 fi
 
 # set some specific permissions for dovecot LDA logging
@@ -67,11 +71,18 @@ touch /var/log/dovecot-lda.log
 chgrp vmail /var/log/dovecot-lda.log
 chmod g+w /var/log/dovecot-lda.log
 
-cd ~athen
+# some directories for the powershell downloader to use
+mkdir -p /var/log/athen/remote
+chmod go+rw /var/log/athen/remote/
+mkdir -p /var/run/athen
+chmod go+rw /var/run/athen
+
+
+cd ~vmail
 if [ ! -d spool ] ; then
     mkdir spool
     chgrp vmail spool
-    chmod 770 spool
+    chmod 750 spool
 fi
 
 if [ ! -r htpasswd ] ; then

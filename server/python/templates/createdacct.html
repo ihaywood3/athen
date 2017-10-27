@@ -1,13 +1,16 @@
 {% extends "base.html" %}
-{% block title %}New Organisation: Completed{% endblock %}
+{% block title %}New Account: Completed{% endblock %}
 {% block body %}
-<p>Your new organisation has been successfuly created.</p>
+<p>Your new account has been successfuly created. Your username is <tt>{{ uid }}</tt> .</p>
 <p>Over the next few days a paper confirmation letter will
 be sent via Australia Post to the address you nominated.
 </p>
-<p>It will be addressed the ``Practice Manager'' (for GPs)
-or to ``Director of IT Services'' (everybody else)
-</p>
+{{ if type == "O" %}
+<p>The letter will be addressed the &ldquo;Practice Manager&rdquo; (for GPs)
+or to &ldquo;Director of IT Services&rdquo; (everybody else).</p>
+{{ else }}
+<p>The letter will be addressed to you personally.</p>
+{{ endif }}
 <p>This will contain a confirmation code that needs ot be entered
 on this website to confirm your account as validated.<p>
 

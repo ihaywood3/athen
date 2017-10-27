@@ -8,11 +8,16 @@ objectclass: person
 cn: admin
 sn: admin
 
+dn: cn=operator,dc=athen,dc=email
+objectclass: person
+cn: admin
+sn: admin
+
 dn: cn=uidNext,dc=athen,dc=email
 objectclass: uidNext
 uidNumber: 1110
 
 dn: mxDomain=HOSTNAME,dc=athen,dc=email
 objectclass: athenMailer
-status: A
+status: C
 mxDomain: HOSTNAME

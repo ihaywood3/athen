@@ -1,42 +1,21 @@
 {% extends "base.html" %}
 {% block title %}
 {% if mode == "new" %}
-Create New Account
+Create New Personal Account
 {% else %}
 Edit Account: {{ data.cn }}
 {% endif %}
 {% endblock %}
 {% block body %}
 {% if mode == "new" %}
-<form action="/acct/save" method="post" enctype="application/x-www-form-urlencoded">
+<form action="/config/acct/save" method="post" enctype="application/x-www-form-urlencoded">
 {% else %}
-<form action="/acct/update" method="post" enctype="application/x-www-form-urlencoded">
+<form action="/config/acct/update" method="post" enctype="application/x-www-form-urlencoded">
   {% endif %}
-
+<input type="hidden" name="type" value="P" />
   <p>
-    {% if error != "" %}
-    <span class="error">{{ error }}</span></p><p>
-    {% endif %}
     <table class="formfields">
-      {% if mode == "new" %}
       <tr>
-	<th>Type</th>
-	<td>
-      <label for="type_org"><input type="radio" name="type" value="O" id="type_org" {% if type == "O" %}checked{% endif %} />Organisation</label>
-      <label for="type_person"><input type="radio" name="type" value="P" id="type_person" {% if type == "P" %}checked{% endif %} />Individual</label>
-      </td></tr>
-      {% endif %}
-      <tr class="org">
-	<th>Organisation Name</th>
-	<td>
-	  {% if mode == "new" %}
-	  <input type="text" name="o" length="20" value="{{ data.o }}" />
-	  {% else %}
-	  {{ data.cn }}
-	  {% endif %}
-	</td>
-      </tr>
-      <tr class="person">
 	<th>Name</th>
 	<td>
 	  {% if mode == "new" %}
@@ -49,7 +28,9 @@ Edit Account: {{ data.cn }}
       </tr>
       <tr>
 	<th>Street</th>
-	<td><input type="text" length="20" value="{{ data.street }}" name="street" /></td>
+	<td><input type="text" length="20" value="{{ data.street }}" name="street" />
+	<a class="small" href="/rationale.html#which-addr">Which address</a>
+	</td>
       </tr>
       <tr>
 	<th>Town</th>
@@ -73,25 +54,26 @@ Edit Account: {{ data.cn }}
 	<th>Fax</th>
 	<td><input type="text" length="20" value="{{ data.facsimileTelephoneNumber }}" name="facsimileTelephoneNumber" /></td>
       </tr>
-      <tr class="org">
-	<th>Type</th>
-	<td>
-	  <select name="businessCategory">
-	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health'],data.get('businessCategory',None))|safe}}
-	    </select>
-	</td>
-      </tr>
-      <tr class="person">
+      <tr>
 	<th>Speciality/Profession</th>
 	<td><input type="text" length="20" value="{{ medicalSpecialty }}" name="medicalSpecialty" /></td>
       </tr>
-      <tr class="person">
+      <tr>
 	<th>Medicare Provider Number</th>
-	<td><input type="text" length="20" value="{{ providerNumber }}" name="providerNumber" /></td>
+	<td><input type="text" length="20" value="{{ providerNumber }}" name="providerNumber" />
+	  <a class="smalllink" href="/config/rationale.html#why-mpn">Why</a>
+	</td>
       </tr>
       <tr>
+      <tr>
+	<th>AHPRA Registration Number</th>
+	<td><input type="text" length="20" value="{{ ahpra }}" name="ahpra" />
+	  <a class="smalllink" href="/config/rationale.html#why-mpn">Why</a>
+	</td>
+      </tr>
 	<th>Password</th>
 	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
+	  <a class="smalllink" href="/config/rationale.html#password">WARNING</a>
       </tr>
       <tr>
 	<th>Password (repeat)</th>

@@ -7,9 +7,7 @@ while true; do
     IFS='|' read -a cmd
     case "${cmd[0]}" in
 	NEWUSER)
-	    TUID=${cmd[1]}
-	    O=${cmd[2]}
-	    PASSWD=${cmd[3]} ./make-home.sh "${TUID}" "${O}" || echo "ERROR:script failed"
+	    USER=${cmd[1]} NUID=${cmd[2]} FULLNAME=${cmd[3]} PASSWD=${cmd[4]} ENCRYPT_FLAG=${cmd[5]} MAILNAME=${cmd[6]} ./make-home.sh || echo "ERROR:script failed"
 	    echo "FINISH:"
 	    ;;
 	LOGIN)

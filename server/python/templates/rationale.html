@@ -17,16 +17,17 @@ Australian Digital Health Authority</a>''
 system however the LDAP server can be mirrored for redundancy and local use.
     <li />A mailserver (one public one, but unlimited private ones) configured to only use SMTP over TLS. When emails hit the system they are encrypted to the recipients key, if not already. Previously read emails are stored on an encrypted filesystem, which is mounted using the users' password as key, only when the user logs in to check their mail.
     <li />A web interface for reading and writing emails but with medical extensions (such as patient name, address, etc), emails are then translated to the PIT format and can be downloaded and imported into existing medical records automatically.
-    <li />A simple downloader program for GPs (like `Fetch'  and similar programs used by the pathologists to send reports)
+    <li />[If there is demand] a simple downloader program for those with electronic records 
+(like `Fetch'  and similar programs used by the pathologists to send reports).
   </ol>
 </p>
 
-<h3>Internals</h3>
+<h3>Technical Internals</h3>
 <p>
-  The LDAP directory is a standard OpenLDAP which as public read-only access. It can be used by email clients such as Outlook, Thunderbird, etc to find recipients. The mailserver is Postfix, with configuration to insist on SMTP-TLS for sending and receiving mails. This means some ISPs won't work, but most will, and Gmail, Hotmail, etc, will all work, Dovecot IMAP is used to access mails, a Python script is attached to the Linux PAM system, when a user tries to log on, the script mounts the users home directory using their password to decrypt it, and then decrypts any new mails received in the meantime. A cron job runs every 10 minutes to see who is no longer logged on, and unmounts their home directory. The web interface is based on Roundcube with a specific medical plugin applied.</p>
-<p> The server does not allow direct root logins. To get root access the administrator can only do this at certain times, late at night and when this happens all users are logged out and their directories unmounted first.
-This is like the `time lock' on a bank vault, and for the same purpose: to defeat the adminstrator if they are under duress from an attacker.
-</p>
+  The directory is a standard OpenLDAP server which has public read-only access. It can be used by email clients such as Outlook, Thunderbird, etc to find recipients. The mailserver is Postfix, with configuration to insist on SMTP-TLS for sending and receiving mails. This means some ISPs won't work, but most will, and Gmail, Hotmail, etc, will all work, Dovecot IMAP is used to access mails, a script is attached to the Linux PAM subsystem, when a user tries to log on, the script mounts the users home directory using their password as the decryption key, and then decrypts any new mails received in the meantime. A background job runs every 10 minutes to see who is no longer logged on, and unmounts their home directory. The web interface is based on Roundcube with a specific medical plugin applied.</p>
+<p> The server does not allow direct adminstrator logins. To get administrator-level (``root'') access the administrator can only do this at certain times, 
+late at night and when this happens any user to happened to be online is logged out and their directories unmounted first.
+This is like the `timer lock' on a bank vault, and for the same purpose: to defeat the adminstrator her/himself if they are under duress from an attacker.
 
 </p>
 
@@ -40,9 +41,63 @@ this is the main `attack surface' Australian clinicians have to deal with. This 
 </ol>
 
 <p> For many years various alternatives for secure messaging have been available such as Argus, HealthLink and so on. None has quite establishing enough dominance to replace e-mail,
-mainly because they won't communicate with each other, and are not `backwards-compatible' with e-mail.</p>
+I suspect because they won't communicate with each other, and are not `backwards-compatible' with e-mail.</p>
 
 <h3>Weaknesses</h3>
 
-Of course whoever has physical access to a mailserver can ultimately override all security. However if they power down the machine, or unplug the hard drive, then all the user directories are unmounted and so encrypted, so this is not as easy as it sounds. Emails are unencrypted in server RAM, but only ever hit the hard drive on an encrypted state (X509-encrypted for new mails, filesystem-encrypted for the old ones). This means the administrator cannot be forced via a court order to provide emails, as they cannot be read without the user's own password. <p><p>The only true weakness is if the mailserver is secretly modified, the new administrator can then `lie in wait' for a user to log in, and grab the password and read all mails. To my knowledge, Australian Courts do not have the power to order an existing administrator to do this. All code is released open-source, so you are free to run your own mailserver.
+Of course whoever has physical access to a mailserver can ultimately override all security. However if they power down the machine, or unplug the hard drive, then all the user directories are unmounted and encrypted, so this is not as easy as it sounds. Emails are unencrypted in server RAM, but only ever hit the hard drive on an encrypted state (GnuPG-encrypted for new mails, filesystem-encrypted for the old ones). This means the administrator cannot be forced via a court order to provide emails, as they cannot be read without the user's own password. </p>
+
+<p>The only true weakness is if the mailserver is secretly modified, the new administrator can then `lie in wait' for a user to log in, and grab the password and read all mails. To my knowledge, Australian Courts do not have the power to order an administrator to do this. All code is released open-source, so you are free to audit the server and verify it is doing what I claim it is doing, and to run your own mailserver if you wish.
+
+<h2>(Anticipated) Frequently Asked Questions</h2>
+
+<h3 id="why-mpn">Why do you want my Medicare provider number and AHPRA number: is't this a security risk?</h3>
+
+These are recorded in the LDAP database so systems can look you up autometically quoting your provider number or AHPRA number: 
+most automated sender systems (pathology, hospitals) use provider numbers to identify doctor-recipients, Whether
+this is the best ID number to use is very debatable, but it's the current reality.
+
+Remember your provider number is required by law to be printed on every invoice, referral and path slip
+ you give to  patients, and your AHPRA number is 
+<a href="http://www.ahpra.gov.au/Registration/Registers-of-Practitioners.aspx">
+online already</a>, so these are not 'secret' or private numbers.
+
+That being said, they are not compulsory and these fields can be left blank if you wish,
+it just means any sender must know your e-mail address.
+
+<h3 id="fake-accounts">What if someone createsa a fake account?</h3>
+
+Firstly all users are reminded it is a criminal offence to masquerade as a 
+health practitioner in Australia.
+
+All new accounts get a 'welcome' letter sent to the name and address they
+provided. Clinics get it addressed to the ``IT services manager'',
+it contains a randomly generated code the recipient must enter.
+Accounts that don't do this within two weeks get disabled.
+
+<h3 id="which-addr">Which address should I use?</h3>
+
+The address you provide goes in a public registry so
+firstly <b>never</b> use your home address.
+
+It should be your ``main professional address'' that you use, and you
+need to be able to recieve mail there. If you are a hospital RMO/registrar,
+use the street address of your main employing hospital (even if you are on rotation 
+elsewhere).
+
+Generally I don't want PO boxes (as anyone could claim to be you using a PO Box)
+but if you really don't have a 'home' clinic or hospital (some anaesthetists
+might fall into this category) I will allow it.
+
+<h3 id="password">What happens if I forget my password?</h3>
+
+<b>You're stuffed.</b> Remember the password is used to secure your
+whole account data with military-grade encryption. I can't break it
+even with your permission.
+
+So, you need to take a bit more care choosing a password than you might
+for many websites, you need to be sure you can recall it, while avoiding
+guessable passwords (anything in a dictionary, and anything based
+on public information about you such as names and birthdates)
+
 {% endblock %}

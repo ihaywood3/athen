@@ -8,9 +8,9 @@ Edit user
 {% endblock %}
 {% block body %}
 {% if mode == "new" %}
-<form action="/user/save" method="post">
+<form action="/config/user/save" method="post">
 {% else %}
-<form action="/user/update" method="post">
+<form action="/config/user/update" method="post">
   {% endif %}
 
   <p>
@@ -18,30 +18,45 @@ Edit user
       {% if mode == "edit" %}
       <tr>
 	<th>Name</th>
-	<td>{{ givenName }} {{ sn }}</td>
+	<td>{{ data.givenName }} {{ data.sn }}</td>
       </tr>
       {% else %}
       <tr>
 	<th>Firstname</th>
 	<td>
-	  <input type="text" name="givenName" length="20" />
+	  <input type="text" name="givenName" length="20" value="{{data.givenName}}"/>
 	</td>
       </tr>
       <tr>
 	<th>Surname</th>
 	<td>
-	  <input type="text" name="sn" length="20" />
+	  <input type="text" name="sn" length="20" value="{{data.sn}}" />
 	</td>
       </tr>
       {% endif %}
       <tr>
 	<th>Speciality/Profession</th>
-	<td><input type="text" length="20" value="{{ medicalSpecialty }}" name="medicalSpecialty" /></td>
+	<td><input type="text" length="20" value="{{ data.medicalSpecialty }}" name="medicalSpecialty" /></td>
       </tr>
       <tr>
 	<th>Medicare Provider Number</th>
-	<td><input type="text" length="20" value="{{ providerNumber }}" name="providerNumber" /></td>
+	<td><input type="text" length="20" value="{{ data.providerNumber }}" name="providerNumber" />
+	  <a class="smalllink" href="/config/rationale.html#why-mpn">Why</a>
+	</td>
       </tr>
+      <tr>
+      <tr>
+	<th>AHPRA Registration Number</th>
+	<td><input type="text" length="20" value="{{ data.ahpra }}" name="ahpra" />
+	  <a class="smalllink" href="/config/rationale.html#why-mpn">Why</a>
+	</td>
+      </tr>
+      {% if mode == "edit" %}
+      <tr>
+	<th>Status</th>
+	<td><label for="status_closed"><input type="checkbox" name="status_closed" value="yes" id="status_closed" />Mark as closed</label></td>
+      </tr>
+      {% endif %}
       <tr>
 	<td></td>
 	<td><input type="submit" name="Submit" /></td>
