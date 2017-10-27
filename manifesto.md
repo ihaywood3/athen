@@ -23,8 +23,8 @@ I refer to them as ``the vendors''.
 	from the regulator
     (the "Australian Digital Health Agency") to use a standard has not changed this problem. Exactly why this happens is an essay in itself(and not one I wish to write!)
     Suffice it to say here, interoperability
-    is hard for reasons largely outside of the vendors' control, and won't be 'fixed' soon.
-    <a title="thanks to two of the vendors for answering my queries on this point"><sup>[1]</sup></a>.
+    is hard for reasons largely outside of the vendors' control, and won't be 'fixed' soon
+    <sup>[1](#fn1</sup>.
 
 All four methods are in widespread use and there is general agreement this
 isn't an ideal state of affairs. Nevertheless things have been remarkably static
@@ -39,7 +39,7 @@ on the grounds of security, but, rightly or wrongly, all other health sectors ar
 Consequently communication with GPs is mainly
 by fax, being still the highest technology in common.
 This could be potentially bad for general practice as the NBN means loss of fax lines
-<a title="Yes there are fax-to-email gateways, but that somewhat undermines the argument that e-mail isn't secure enough for health"><sup>[2]</sup></a>
+<sup>[2]{#fn2)</sup>.
 GPs risk being "punished for
 doing the right thing": isolated from the rest of the health system because they
 won't compromise on messaging security.
@@ -67,7 +67,7 @@ The Division: Hospitals
 -----------------------
 
 The main change I have seen in the last 2--3 years is local
-<a title="for me that's south-eastern Melbourne"><sup>[3]</sup></a> public hospitals have 'blinked' and started
+<sup>[3]{#fn3)</sup> public hospitals have 'blinked' and started
 e-mailing, unencrypted, clinical documents in a range of contexts. They are not doing it automatically: if I wanted a discharge summary, for example, I or my secretary had to ask
 a human (usually an allied health clinician in the target department) to manually email it to me, but it is happening.
 
@@ -77,11 +77,7 @@ was acceptable for Medicare billing at the consultant rate.
 
 Lots of other organisations in and around health have been routinely using e-mail for some time: schools, NGO charities,
 Child Protection (known as "DOCS" north of the Murray), police, allied
-health, psychologists, etc, etc.
-
-This different attitude was driven home to me personally two years ago: a patient of mine died, being a ward of the State at the time of her death. Information about the death of a ward of the State
-is extremely sensitive both politically and clinically. Nevertheless all the players (police, DOCS, even the Coroner's court staff)
-were completely relaxed about sending and receiving reports from me via e-mail.
+health, psychologists, etc, etc <sup>[4](#fn4)</sup>
 
 I suspect the main reason is for this shift is hospitals and other large organisations have for some time run 
 (or commissioned an IT firm to run for them) their own e-mail servers. This has allowed them to manage *some*
@@ -331,7 +327,7 @@ is filed in a medical record, as not every fax pertains to a patient, so somebod
 what to do with them. In terms of total office workload however, it's at worst the same (because e-mailed messages won't be posted or faxed),
 and better some of the time for messages the system can convert to HL7.
 
-I do need too hammer this point: this system won't even try to match what the vendors do in terms of integration,
+I need to hammer this point a bit: this system won't even try to match what the vendors do in terms of integration,
 because this system can't control what is sent to it (and this mirrors the reasons the vendors can't link up
 with each other): this is about providing a *good enough* system to shift the messages currently sent by post/fax/unencrypted e-mail.
 It's not meant to replace what is currently coming through the vendor systems.
@@ -368,3 +364,16 @@ the system works.
 
 A [user guide](userguide.md) will get written, promise.
 
+Footnotes
+---------
+
+<a name="fn1">1:</a> Thanks to two of the vendors for answering my queries on this point
+
+<a name="fn2">2:</a>Yes there are fax-to-email gateways, but that somewhat undermines the argument that e-mail isn't secure enough for healthcare
+
+<a name="fn3">3:</a>For me that's south-eastern Melbourne. Maybe we are a messaging backwater and the rest of the country are merrily
+charging ahead with product X. But if so they are being remarkably coy about it.
+
+<a name="fn4">4:</a>This different attitude was driven home to me personally two years ago: a patient of mine died, being a ward of the State at the time of her death.
+Information about the death of a ward of the Stateis extremely sensitive both politically and clinically. Nevertheless all the players (police, DOCS, even the Coroner's court staff)
+were completely relaxed about sending and receiving reports from me via e-mail.
