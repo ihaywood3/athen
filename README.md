@@ -16,8 +16,8 @@ recipients key, if not already. Previously read emails are stored on an encrypte
 Links
 -----
 
-* [the manifesto](athen/manifesto.md) is a non-technical opinion piece about the current state
+* [the manifesto](manifesto.md) is a non-technical opinion piece about the current state
 of communication in Australian healthcare and why this software is an attempt at moving things forward.
-* [the whitepaper](athen/whitepaper.md) is a technical outline of how the server works.
+* [the whitepaper](whitepaper.md) is a technical outline of how the server works.
 
 
