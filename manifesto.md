@@ -24,7 +24,7 @@ I refer to them as ``the vendors''.
     (the "Australian Digital Health Agency") to use a standard has not changed this problem. Exactly why this happens is an essay in itself(and not one I wish to write!)
     Suffice it to say here, interoperability
     is hard for reasons largely outside of the vendors' control, and won't be 'fixed' soon
-    <sup>[1](#fn1</sup>.
+    <sup>[1](#fn1)</sup>.
 
 All four methods are in widespread use and there is general agreement this
 isn't an ideal state of affairs. Nevertheless things have been remarkably static
@@ -39,7 +39,7 @@ on the grounds of security, but, rightly or wrongly, all other health sectors ar
 Consequently communication with GPs is mainly
 by fax, being still the highest technology in common.
 This could be potentially bad for general practice as the NBN means loss of fax lines
-<sup>[2]{#fn2)</sup>.
+<sup>[2](#fn2)</sup>.
 GPs risk being "punished for
 doing the right thing": isolated from the rest of the health system because they
 won't compromise on messaging security.
@@ -67,7 +67,7 @@ The Division: Hospitals
 -----------------------
 
 The main change I have seen in the last 2--3 years is local
-<sup>[3]{#fn3)</sup> public hospitals have 'blinked' and started
+<sup>[3](#fn3)</sup> public hospitals have 'blinked' and started
 e-mailing, unencrypted, clinical documents in a range of contexts. They are not doing it automatically: if I wanted a discharge summary, for example, I or my secretary had to ask
 a human (usually an allied health clinician in the target department) to manually email it to me, but it is happening.
 
@@ -103,13 +103,7 @@ The Division: GPs
 
 The main proximate reason GPs don't e-mail clinical documents is they are "not allowed": GPs remain under [formal advice](http://www.racgp.org.au/your-practice/ehealth/protecting-information/email/) 
 e-mail is not secure
-enough. Many GPs assume this is "the law" and binding across the entire sector, but this contradicts the experience of myself and many others.
-
-It's worth reminding GP readers that the rest of the health sector doesn't have accreditation
-as they understand it: we [private specialists] have resisted the concept, and hospital accreditation works exclusively with admin around management processes: 
-there's no fellow with a clipboard walking the wards and quizzing interns how 
-they securely communicate with GPs. So there is no-one to tell the other sectors of the health system e-mail is 
-"not allowed".
+enough. Many GPs assume this is "the law" and binding across the entire sector, but this contradicts the experience of myself and many others <sup>[5](#fn5)</sup>.
 
 In fairness to the GPs and their College there have been "good" (i.e. not just a rule somebody made up)
 reasons to avoid e-mail.
@@ -163,11 +157,9 @@ Although it's the best solution in many ways, it's going to be a long wait.
 ### 1. History.
 
 All three messaging vendors have operated for over a decade, Argus for nearly 20 years,
-None have moved into general use, indeed (at least in my local area) slipping
-backwards into obscurity amongst GPs, and never mentioned in specialist/hospital circles.
-Sadly, it's unclear what would or could happen now to move things along.
+None have moved into widespread use <sup>[6](#fn6)</sup>.
 
-The Federal Government could easily force the issue by using the Medicare Agreements to
+Like a lot of people, my frustration is the Federal Government could easily force the issue by using the Medicare Agreements to
 command public hospitals to use one product, and
 the rest of the health sector would fall in line pretty quickly. But they could have done
 that at any time in the last 20 years, and show no more sign of doing so now than at any previous time.
@@ -199,8 +191,7 @@ end of this: I would exchange at least 4-5 e-mails to Family Court lawyers, scho
 a hospital allied-health clinician or a paediatrician, but the general point applies across many areas of healthcare.
 
 Many of these people can't (easily) use the vendors: if you are not a healthcare organisation
-then you can't have a ADMA-endorsed certificate for encryption. [For completeness, 
-at least Medical-Objects do support using non-ADMA certificates, so presumably they would licence a school or a NGO social worker if they requested it]
+then you can't have a ADMA-endorsed certificate for encryption <sup>[7](#fn7)</sup>.
 
 But, all these non-health organisations have work e-mail: for charities the national head office will provide it,
 in Victoria all teachers get an e-mail in the `vic.edu.au` domain, similarly 
@@ -369,11 +360,33 @@ Footnotes
 
 <a name="fn1">1:</a> Thanks to two of the vendors for answering my queries on this point
 
-<a name="fn2">2:</a>Yes there are fax-to-email gateways, but that somewhat undermines the argument that e-mail isn't secure enough for healthcare
+<a name="fn2">2:</a> Yes there are fax-to-email gateways, but that somewhat undermines the argument that e-mail isn't secure enough for healthcare
 
-<a name="fn3">3:</a>For me that's south-eastern Melbourne. Maybe we are a messaging backwater and the rest of the country are merrily
+<a name="fn3">3:</a> For me that's south-eastern Melbourne. Maybe we are a messaging backwater and the rest of the country are merrily
 charging ahead with product X. But if so they are being remarkably coy about it.
 
-<a name="fn4">4:</a>This different attitude was driven home to me personally two years ago: a patient of mine died, being a ward of the State at the time of her death.
+<a name="fn4">4:</a> This different attitude was driven home to me personally two years ago: a patient of mine died, being a ward of the State at the time of her death.
 Information about the death of a ward of the Stateis extremely sensitive both politically and clinically. Nevertheless all the players (police, DOCS, even the Coroner's court staff)
 were completely relaxed about sending and receiving reports from me via e-mail.
+
+<a name="fn5">5:</a> It's worth reminding GP readers that the rest of the health sector doesn't have accreditation
+as they understand it: we [private specialists] have resisted the concept, and hospital accreditation works exclusively with admin around management processes: 
+there's no fellow with a clipboard walking the wards and quizzing interns how 
+they securely communicate with GPs. So there is no-one to tell the other sectors of the health system e-mail is 
+"not allowed".
+
+<a name="fn6">6:</a> Indeed in my local area messaging seems to be slipping backwards. As a specialist I had exactly 2 practices advertise they used Argus.
+I rang them and offered to install it myself to begin exchanging messages.
+At one none of the front-desk staff could explain what "Argus" or why it was printed on their practice letterhead. The other was my own practice
+as a patient, I raised it with my GP, who became very agitated and bade me never speak of it again.
+
+Now Argus have been swallowed by Telstra Health they have lowered their profile and don't seem to be marketing much.
+
+If I didn't subscribe to the GPCG-TALK email list, I would have never heard the names of the other two main players (Medical Objects
+and HealthLink)
+
+Really this is what spurred me to write ATHEN: we're not just stuck, but moving backwards at least in my area (and again, I don't
+think my area is that unrepresentative)
+
+<a name="fn7">7:</a> For completeness, at least Medical-Objects do support using non-ADMA crypto, so presumably they would licence a school or a NGO social worker if they requested it,
+but this is unlikely: these people don't have amedical records package to connect MO to.
