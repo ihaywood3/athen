@@ -19,7 +19,7 @@ POSTCODE_EXCEPTIONS=[
     ("0872","GIBSON DESERT NORTH","WA"),
     ("0872","GIBSON DESERT SOUTH","WA"),
     #("2406","MUNGINDI","QLD"), there is also a Mungindi in NSW
-    ("2540","HMAS CRESWELL","ACT"), # cue long and pointless discussion of whether Jervis Bay is technically part of the ACT 
+    ("2540","HMAS CRESWELL","ACT"), # cue long and pointless discussion of whether the Jervis Bay base is technically part of the ACT 
     ("2540","JERVIS BAY","ACT"),
     ("2611","COOLEMAN","NSW"),
     ("2611","BIMBERI","NSW"),
@@ -71,7 +71,7 @@ def _postcode_to_state(postcode,town):
     return state
 
 def get_xcn(person):
-    """Convert the title/firstname/surname dict to an XCN dict"""
+    """Convert the title/firstname/surname dict to an XCN field dict"""
     xcn = {1:person['surname'],
            2:person.get("firstname",""),
            5:person.get("title","")
@@ -79,11 +79,19 @@ def get_xcn(person):
     if 'provider_number' in person:
         xcn[0] = person['provider_number']
         xcn[8] = "AUSHICPR"
-        xcn[12] = "UPIN" # means Yank "universal physician provider number" MO do this
+        xcn[12] = "UPIN" # means Yank "Universal Physician provider number" offical examples (via MO) show this.
 
-
+def make_prd(person):
+    """"Comnvert the title/firstname/surname dict to a PRD segment dict"""
+    # FIXME: support telephone nos and addresses too
+    prd = {0:"PRD"}
+    prd[2] = {0:person['surname'],1:person.get('firstname',''),4:person.get('title',''),6;'L'} # L = Legal name
+    if 'provider_number' in person:
+        prd[7] = (person['provider_number'],'AUSHICPR','UPIN')
+    return prd
 
 def doc_as_hl7_ft(ld):
+    '''Turn our markuo into the HL7 Formatted Text type'''
     doc = ld.getvalue()
     doc = emit.hl7_escape_special(doc)
     doc = re.sub("[\u2028\u2029]*\uEF05([^\uEF06]+)\uEF06[\u2028\u2029]*",lambda m: "\\.br\\\\H\\"+m.group(1).upper()+"\\.br\\\\N\\",doc)
@@ -104,7 +112,7 @@ def doc_as_hl7_ft(ld):
 
 def make_hl7(style,embed,ld=None):
     """
-    accept a LogicalDocument and produce an HL7
+    accept a LogicalDocument and produce an HL7 strucutre (a list of dicts representing segments)
     Two structures: ORU (i.e. like a path report), and REF (i.e  a "proper" referral)
     Two ways to embed the document: RTF blob (RTF), and HL7 Formatted Text (FT)
     """
@@ -148,18 +156,13 @@ def make_hl7(style,embed,ld=None):
            3:(semail,config.domain,"DNS"),
            5:(temail,tdomain,"DNS"),
            6:util.now_tz(), 
-           8:("ORU","R01"),
            9:ld.get_unique_id(),
            10:"P",
-           11:("2.3.1",("AUS","","ISO"),("AS4700.2","","L")),
            15:"AL",
            16:"AUS",
            17:"ASCII",
            20:""  # force correct number of empty fields
            }
-    if style == "ref":
-        msh[8] = ("REF","I12","REF_I12")
-        msh[11] = ("2.3.1",("AUS","","ISO"),("AS4700.6","","L")),
     pid = {0:"PID",
            1:"1",
            # FIXME: standards say PID-3 is required. Have wild samples with it blank .We can only rerally generate fake IDs anyway
@@ -167,23 +170,7 @@ def make_hl7(style,embed,ld=None):
            7:lo.birthdate,
            8:lo.sex,
            11:(street,"",town,state,postcode,"AUS","C"),
-           30:""}
-    if style == 'ORU':
-        pv1 = {0:"PV1",
-               1:"1",
-               2;"O", # Outpatient. table 0004 pg 220
-               8:get_xcn(ld.recipient),
-               9:get_xcn(ld.recipient),
-               52:""} # yes 52 frigging fields, even in 2.3.1
-        orc = {0;'ORC',
-               1;'RE', # "observations to follow" table 0119 on pg 293
-               3:(ld.get_unique_id(),config.domain,config.domain,'DNS'),
-               5:'CM', # order status table 0038 page 303 CM= "order completed"
-               12:get_xcn(ld.recipient),
-               24:""}
-    elif style == "REF":
-        rf1 = {0:"RF1",
-               
+           30:""}                     
     obr = {0:'OBR',
            1:"1",
            3:(ld.get_unique_id(),config.domain,config.domain,'DNS'),
@@ -192,7 +179,7 @@ def make_hl7(style,embed,ld=None):
            16:get_xcn(ld.recipient),
            20:"LN="+ld.get_unique_id(), # black box filed in HL7 official, AU standard has mini-language, page 21 of 2.3.1 4007.2 standards
            22:ld.get_document_time(),
-           24:"PHY", # "physician note" used for all letters
+           24:"PHY", # "physician note": used for all letters
            25:"F", # result status "F" = final result table 0123 page 325 2.3.1 Standards
            32:get_xcn(ld.sender),
            45:""}
@@ -217,3 +204,41 @@ def make_hl7(style,embed,ld=None):
                   3:"Base64",
                   4:base64.b64encode(trtf)
                   }
+    if style == 'ORU':
+        msh[8] = ("ORU","R01","ORU_R01")
+        msh[11] = ("2.3.1",("AUS","","ISO"),("AS4700.2","","L"))
+        pv1 = {0:"PV1",
+               1:"1",
+               2;"O", # Outpatient. table 0004 pg 220
+               8:get_xcn(ld.recipient),
+               9:get_xcn(ld.recipient),
+               52:""} # yes 52 frigging fields, even in 2.3.1
+        orc = {0;'ORC',
+               1;'RE', # "observations to follow" table 0119 on pg 293
+               3:(ld.get_unique_id(),config.domain,config.domain,'DNS'),
+               5:'CM', # order status table 0038 page 303 CM= "order completed"
+               12:get_xcn(ld.recipient),
+               24:""}
+        return [msh,pid,pv1,orc,obr,obx]
+    elif style == "REF":
+        msh[8] = ("REF","I12","REF_I12")
+        msh[11] = ("2.3.1",("AUS","","ISO"),("AS4700.6","","L"))
+        rf1 = {0:"RF1",
+               1:("A","Accepted","HL70283"), # status
+               3:("GRF","General referal","HL70281"), # referral type
+               # see table 0281 on pgh 758
+               # The Lismore sample uses DRF/discharge referral here, but that's not in the Standard's table, it is in the AU 4700.6 standard pg 20
+               # FIXME: scan the message content and apply different types heren as appropriate.
+               4:("WR","Send written report","HL70282"), # disposition table 0282 pg 754 Again Lismore use a value DF/Discharge again that's not in the Standard's table, but is in AU 4700.6 pg 21
+               5:("O","Outpatient","HL70282"), # category, table 0284 pg 755
+               6:ld.get_unique_id(),  # oringating identifer see pg 755. The other optional components refer to the *target* application ID, which we don't know. This is the only required field by 2.3.1 Standard
+               11:""
+               }
+        prd_rp = make_prd(ld.sender)
+        prd_rp[1] = [("RP","Referring Provider","HL70286"),("AP","Authoring provider","HL70286")] # table 0286 pg 759 AP is AU extension from the confluence docs, required by them
+        prd_rt = make_prd(ld.recipient)
+        prd_rt[1] = [("RT","Referred to Provider","HL70286"),("IR","Intended Recipient","HL70286")] # same table, again IR is an AU addition
+        return [msh,rf1,prd_rp,prd_rt,pid,obr,obx]
+    else:
+        util.AthenError("no such style %r" % style)
+    
