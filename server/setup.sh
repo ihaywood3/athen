@@ -21,14 +21,39 @@ if [ ! -t 0 ] ; then
     exit 1
 fi
 apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-ldap dovecot-lmtpd libpam-script python3-ldap debconf-utils roundcube roundcube-mysql- roundcube-sqlite3 slapd ldap-utils python3-flask apache2 libapache2-mod-php5 python3-lxml python3-bs4 python3-waitress libpam-ldapd python3-dateutil
+DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-ldap dovecot-lmtpd libpam-script python3-ldap debconf-utils roundcube roundcube-mysql- roundcube-sqlite3 slapd ldap-utils python3-flask apache2 libapache2-mod-php5 python3-lxml python3-bs4 python3-waitress libpam-ldapd python3-dateutil wget git
 cat ./debconf.keys | debconf-set-selections
 DEBIAN_FRONTEND=noninteractive apt-get -y install postfix postfix-ldap 
+DIR=`dirname $0`
 
 # FXIME: currently using compiled bleeding-edge gnupg and its python binding 'gpg' from offical GPGME
+apt-get build-dep libgpg-error
+apt-get install autopoint  file ghostscript help2man  libbz2-dev libcurl4-gnutls-dev libgnutls28-dev libldap2-dev libnpth0-devlibreadline-dev libsqlite3-dev libusb-dev pkg-config texinfo transfig zlib1g-dev swig libncurses5-dev
+pushd ~
+mkdir gnupg_builds
+cd gnupg_builds
+wget https://gnupg.org/ftp/gcrypt/gnupg/gnupg-2.2.1.tar.bz2
+wget https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.27.tar.bz2
+wget https://gnupg.org/ftp/gcrypt/libgcrypt/libgcrypt-1.8.1.tar.bz2
+wget https://gnupg.org/ftp/gcrypt/libksba/libksba-1.3.5.tar.bz2
+wget https://gnupg.org/ftp/gcrypt/libassuan/libassuan-2.4.3.tar.bz2
+wget https://gnupg.org/ftp/gcrypt/pinentry/pinentry-1.0.0.tar.bz2
+wget https://gnupg.org/ftp/gcrypt/gpgme/gpgme-1.9.0.tar.bz2
 
+for i in libgpg-error-1.27 libassuan-2.4.3 libgcrypt-1.8.1 libksba-1.3.5 pinentry-1.0.0 gnupg-2.2.1 gpgme-1.9.0  ; do
+    tar xvjf $i.tar.bz2
+    cd $i
+    ./configure
+    make
+    make install
+    if [ -d lang/python ] ; then
+	cd lang/python
+	python3 setup.py install
+    fi
+    cd ..
+done
 
-DIR=`dirname $0`
+popd
 
 cp -R etc/* /etc/
 
