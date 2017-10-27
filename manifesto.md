@@ -103,20 +103,21 @@ The Division: GPs
 
 The main proximate reason GPs don't e-mail clinical documents is they are "not allowed": GPs remain under [formal advice](http://www.racgp.org.au/your-practice/ehealth/protecting-information/email/) 
 e-mail is not secure
-enough. Many GPs assume this is "the law" and binding across the entire sector, but this contradicts the experience of myself and many others <sup>[5](#fn5)</sup>.
+enough. Many GPs assume this is "the law" and binding for everyone, but this contradicts the experience of myself and many others <sup>[5](#fn5)</sup>.
 
 In fairness to the GPs and their College there have been "good" (i.e. not just a rule somebody made up)
 reasons to avoid e-mail.
 
-1. E-mail doesn't integrate with GP clinical software, the vendors invest a lot of effort in this. (and arguably
+1. E-mail doesn't integrate with GP software (electronic medical
+records (EMRs): Medical Director, Best Practice, et al), the vendors invest a lot of effort in this. (and arguably
 that's the main service they offer, not actual message transport)
-   Other sectors either don't have an electronic records system to integrate, or (in the case of big hospitals)
+   Other sectors either don't have an EMR to integrate, or (in the case of big hospitals)
    integration with messaging is a low priority for the
-   hospital and the systems vendor. Even when they do support messaging, it often imposes a very limited workflow:
-   usually the intern can only send one discharge summary using a bulky fixed template at the end of the admission, they
+   hospital and the EMR vendor. Even when they do support messaging, it often imposes a very limited workflow:
+   usually the intern/RMO only send one discharge summary using a overly-complex fixed template at the end of the admission, they
    can't send messages at other times, nor receive messages from outside at all.
    Sadly many hospitals seem happy with what I did as a registrar:  manually cut-and-pasting messages
-   between Microsoft Outlook and their medical record software.
+   between Microsoft Outlook and their EMR.
 
 2. All but the biggest practices can't feasibly run their own mailserver. The result is
    e-mail for many GPs and private specialists  is "consumer-grade": either the e-mail account that comes with their ISP, or
@@ -124,7 +125,7 @@ that's the main service they offer, not actual message transport)
 
 3. E-mail traditionally was "store-and-forward": e-mails went to a server and waited
    for the recipient to intermittently log in (via dial-up modem) 
-   and retrieve the message. This could be hours or days, and the sender had no idea when, or if, this happened.
+   and retrieve the message. This could be hours or days, or never, and the sender had no idea when, or if, this happened.
 
 The point I'm labouring here is there is a concrete reason why the different sectors
 have taken different views on the technology: big organisations can partially secure
@@ -148,19 +149,20 @@ attaining Fellowship.
 The Vendor Solution
 ----------------------
 
-Traditionally most players have expected the health sector to move eventually to option 4., the vendors, over time.
-It's secure, it's integrated, and many GPs have done the hard yards in getting
- multiple messaging software packages installed on their computers and integrated with their record systems.
+Traditionally most commentators have expected the health sector to move eventually to option 4., the vendors, over time.
+Many GPs, having done the hard yards in getting
+ multiple messaging software packages installed on their computers and integrated with their systems, understandably
+ expect the rest of us to "catch up"..
 
-Although it's the best solution in many ways, it's going to be a long wait.
+Although any vendor is superior to post/fax/e-mail, sadly it's going to be a long wait.
 
 ### 1. History.
 
 All three messaging vendors have operated for over a decade, Argus for nearly 20 years,
 None have moved into widespread use <sup>[6](#fn6)</sup>.
 
-Like a lot of people, my frustration is the Federal Government could easily force the issue by using the Medicare Agreements to
-command public hospitals to use one product, and
+Like a lot of people, my frustration is the Federal Government could solve this issue at a stroke of a pen: use the State/Federal Medicare funding agreements to
+force public hospitals to use one product, and
 the rest of the health sector would fall in line pretty quickly. But they could have done
 that at any time in the last 20 years, and show no more sign of doing so now than at any previous time.
 
@@ -206,6 +208,9 @@ essay, around how time emailing patients would be remunerated in private practic
 As now a patient of the public sector system I have realised how valuable it is to e-mail my clinicians
 (who, being salaried, are happy to respond).
 
+Point is, even if a vendor solution gets up in health, we still need some other system to
+talk to eeverybody else, and it's going to be unencrypted e-mail unless an alternative is put forward.
+
 ### 3. Money
 
 I'm putting this here as an "anti-reason". It tends to drive a lot of angst and discussion
@@ -247,8 +252,7 @@ interfaces seamlessly with everything, and pleases everyone: to get anywhere, tr
 
 The core of my proposal is a specific e-mail server that is hardened so
 its security is ["good enough"](http://changingminds.org/disciplines/psychoanalysis/concepts/good-enough_mother.htm),
-its compatible with hospital/NGO e-mail, and on the other side tries to play nice with GP
-medical records systems.
+its compatible with hospital/NGO e-mail, and on the other side tries to play nice with GP EMRs.
 
 Firstly this system matches the security measures hospitals already use
 (secure datacentre located in Australia, clear legal responsibility taken for server security,
@@ -260,9 +264,15 @@ so cheap this is feasible. The difference with Gmail is new users would be sent 
 (and have to enter the confirmation key contained in the letter to keep their account active), this provides
 identity security, again like hospital e-mail systems.
 
-A big advantage it is means individual users in hospitals can sign up without getting
-'permission' from the IT department/ central admin (that generally just don't want to know): they can sign up and operate
-using the web browser already installed on the terminals at work or a smartphone.
+Registration would be open to all AHPRA-registered professionals, and other professionals with a legitimate interest
+in communicating with the same (social workers, schools, Child Protection, lawyers). Patients won't be registered at this stage.
+Big senders (pathology, radiology, hospitals) will be told to go and use a vendor.
+
+But, I do want individual users in hospitals to be able to sign up without getting
+'permission' from the IT department/ central admin (that generally just don't want to know): they operate
+using the web browser already installed on the terminals at work or a smartphone. yes it's clunky for them:
+to send they have to manually key in the patient details and then cut-and-paste the message content: but that's what they do now
+with Microsoft Outlook.
 
 Secondly we need to go further than the hospitals and use encryption: the server
 will only send e-mail directly to the recipient's server, using
@@ -277,9 +287,11 @@ The 'holdouts' (who don't support it and only allow old-style unencrypted connec
 providing consumer e-mail accounts
 (and, as noted, some are stuck using these). That
 means these people are excluded, unless they 'upgrade' to this system or another that supports
-encryption. It is likely the no-encryption holdouts will decline over time: courtesy of Edward Snowden's
+encryption.
+
+It is likely these no-encryption holdouts will decline over time: courtesy of Edward Snowden's
 [revelations](https://en.wikipedia.org/wiki/Global_surveillance_disclosures_%282013%E2%80%93present%29)
-the big Internet companies are applying increasing [pressure](https://www.act-on.com/blog/gmail-tls-encryption-and-deliverability-what-you-need-to-know/)
+the big Internet companies, especially Google, are applying increasing [pressure](https://www.act-on.com/blog/gmail-tls-encryption-and-deliverability-what-you-need-to-know/)
 on other e-mail providers to use STARTTLS.
 
 This server will also encrypt e-mails stored on disc, the encryption
@@ -320,7 +332,9 @@ and better some of the time for messages the system can convert to HL7.
 
 I need to hammer this point a bit: this system won't even try to match what the vendors do in terms of integration,
 because this system can't control what is sent to it (and this mirrors the reasons the vendors can't link up
-with each other): this is about providing a *good enough* system to shift the messages currently sent by post/fax/unencrypted e-mail.
+with each other): this is not a "big-bang" revolution to solve everything (we've had
+20 years of those, all failed): it's about providing a *good enough* system to incrementally shift the messages
+currently sent by post/fax/unencrypted e-mail.
 It's not meant to replace what is currently coming through the vendor systems.
 
 What I'm Asking For
@@ -334,7 +348,7 @@ there changes that would make it so? Which organisations' blessing would help in
 GPs being confident they are "allowed" to use it?
 
 If your answer is "Waste of time, total victory of product X/standard Y is
-soon inevitable", please explain what has changed in the past 20 years to make it so.
+soon inevitable", please explain what is different from all the bluster and bureacracy over the past 20-odd years.
 
 If there is support for this solution then the main issue is help with integration: users
 who are willing to receive some test messages and confirm they will load correctly
@@ -350,7 +364,7 @@ for a new name would be much appreciated!
 Related Documents
 -----------------
 
-The [whitepaper](whitepaper.md) is a technical run-through of how
+The [white paper](whitepaper.md) is a technical run-through of how
 the system works.
 
 A [user guide](userguide.md) will get written, promise.
@@ -360,33 +374,33 @@ Footnotes
 
 <a name="fn1">1:</a> Thanks to two of the vendors for answering my queries on this point
 
-<a name="fn2">2:</a> Yes there are fax-to-email gateways, but that somewhat undermines the argument that e-mail isn't secure enough for healthcare
+<a name="fn2">2:</a> Yes there are fax-to-email gateways, but GPs that use them are now in an interesting position "E-mail is bad, except when
+it's pretending to be a fax machine"
 
 <a name="fn3">3:</a> For me that's south-eastern Melbourne. Maybe we are a messaging backwater and the rest of the country are merrily
 charging ahead with product X. But if so they are being remarkably coy about it.
 
 <a name="fn4">4:</a> This different attitude was driven home to me personally two years ago: a patient of mine died, being a ward of the State at the time of her death.
-Information about the death of a ward of the Stateis extremely sensitive both politically and clinically. Nevertheless all the players (police, DOCS, even the Coroner's court staff)
-were completely relaxed about sending and receiving reports from me via e-mail.
+Information about the death of a ward of the State is extremely sensitive both politically and clinically. Nevertheless all the non-medical players (police, ombudsman,
+DOCS, even the Coroner's court staff) were, to my shock, utterly relaxed and blase about sending and receiving reports from me via e-mail.
 
 <a name="fn5">5:</a> It's worth reminding GP readers that the rest of the health sector doesn't have accreditation
 as they understand it: we [private specialists] have resisted the concept, and hospital accreditation works exclusively with admin around management processes: 
 there's no fellow with a clipboard walking the wards and quizzing interns how 
-they securely communicate with GPs. So there is no-one to tell the other sectors of the health system e-mail is 
+they securely communicate with GPs. So there is no-one to tell us in the other sectors of the health system e-mail is 
 "not allowed".
 
-<a name="fn6">6:</a> Indeed in my local area messaging seems to be slipping backwards. As a specialist I had exactly 2 practices advertise they used Argus.
+<a name="fn6">6:</a> Indeed in my local area electronic messaging seems to be slipping backwards. As a specialist I had exactly 2 practices advertise they used *[product X]*.
 I rang them and offered to install it myself to begin exchanging messages.
-At one none of the front-desk staff could explain what "Argus" or why it was printed on their practice letterhead. The other was my own practice
+At one none of the front-desk staff could explain what *[product X]* was or why its name was printed on their practice letterhead. The other was my own practice
 as a patient, I raised it with my GP, who became very agitated and bade me never speak of it again.
 
-Now Argus have been swallowed by Telstra Health they have lowered their profile and don't seem to be marketing much.
+Now that vendor have been bought out and don't seem to be marketing much.
 
-If I didn't subscribe to the GPCG-TALK email list, I would have never heard the names of the other two main players (Medical Objects
-and HealthLink)
+If I didn't subscribe to the GPCG-TALK email list, I would have never heard the names of the other two main players.
 
-Really this is what spurred me to write ATHEN: we're not just stuck, but moving backwards at least in my area (and again, I don't
+Really this is what spurred me to write ATHEN: we're not just stuck, but moving *backwards* in my area (and again, I don't
 think my area is that unrepresentative)
 
-<a name="fn7">7:</a> For completeness, at least Medical-Objects do support using non-ADMA crypto, so presumably they would licence a school or a NGO social worker if they requested it,
-but this is unlikely: these people don't have amedical records package to connect MO to.
+<a name="fn7">7:</a> For completeness, at least Medical-Objects support using non-ADMA crypto, so presumably they could licence a non-healthcare entity if they requested it,
+but this is unlikely: these people don't have a EMR to connect to.
