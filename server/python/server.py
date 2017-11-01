@@ -54,15 +54,16 @@ If you still have no idea what this letter is about, please contact me on the ab
 
 schema = {
     "org": [
-            ('o', True, None, 'Organisation Name'),
-            ('st', True, None, 'State'),
-            ('l', True, None, 'Town'),
-            ('businessCategory', True, None, 'Business category'),
-            ('street', True, None, 'Street'),
-            ('l', True, None, 'Town'),
-            ('postalCode', True, '[0-9]{4}', 'postcode'),
-            ('telephoneNumber', False, '[0-9 ]{8,10}', 'Telephone number'),
-            ('facsimileTelephoneNumber', False, '[0-9 ]{8,10}', 'Fax number'),
+        ('o', True, None, 'Organisation Name'),
+        ('st', True, None, 'State'),
+        ('l', True, None, 'Town'),
+        ('businessCategory', True, None, 'Business category'),
+        ('street', True, None, 'Street'),
+        ('l', True, None, 'Town'),
+        ('postalCode', True, '[0-9]{4}', 'postcode'),
+        ('telephoneNumber', False, '[0-9 ]{8,10}', 'Telephone number'),
+        ('facsimileTelephoneNumber', False, '[0-9 ]{8,10}', 'Fax number'),
+        ('deliveryFormat', False, 'pit|pit-rtf|hl7-oru-ft|hl7-oru-rtf|hl7-ref-ft|hl7-ref-rtf', 'Preferred delivery format')
         ],
     "person": [ # an "independent user, ie./ not part of an organisation"
         ('st', True, None, 'State'),
@@ -76,6 +77,7 @@ schema = {
         ('medicalSpecialty', True, None, 'Profession/medical specialty'),
         #("ahpra", False, None, "AHPRA registration number"),
         ('providerNumber', False, '^[0-9]{5,6}[0-9A-Z][A-Z]$', "Medicare provider number")
+        ('deliveryFormat', False, 'pit|pit-rtf|hl7-oru-ft|hl7-oru-rtf|hl7-ref-ft|hl7-ref-rtf', 'Preferred delivery format')
     ],
     "employee": [ # someone working for an org but may not have an account in their own right
         ('givenName', True, None, 'Given name'),
@@ -213,7 +215,9 @@ def saveacct():
                 title = "Manager IT Services \\\\ "
             opening = "Madam/Sir"
             namefield = "o"
+            logging.debug("config.base_dn = %r" % config.base_dn)
             new_dn = config.base_dn.add("o",data["o"])
+            logging.debug("new_dn = %r" % new_dn)
         else:
             # an independent person
             templ = "editperson.html"
@@ -418,7 +422,7 @@ def updateacct():
         if request.form.get("status_closed", "no") == "yes":
             data['status'] = 'X'
         data['timeLastUsed'] = myldap.ldap_time()
-        g.ldap.modify(user,dn,data)
+        g.ldap.modify(user.dn,data)
         flash("Record modified")
         g.ldap.close()
         return redirect(url_for("index"))
@@ -514,16 +518,16 @@ def confirmacct():
             nonce = nonce.upper()
             uid = clean_string(request.form['uid'])
             if len(nonce) != NONCELENGTH:
-                raise AthenError("Key is not valid","nonce",{"nonce":nonce,'uid':uid})
+                raise AthenError("Key is an invalid length","nonce",{"nonce":nonce,'uid':uid})
             get_ldap()
-            res = g.ldap.query("(uid=%s)",uidfields=['nonce'])
+            res = g.ldap.query("(uid=%s)",uid,fields=['nonce'],base=config.base_dn)
             if not res:
                 raise AthenError("User ID is not valid","nonce",{"nonce":nonce,"uid":uid})
             if res[0]['nonce'] != nonce:
                 raise AthenError("Key is not valid","nonce",{"nonce":nonce,"uid":uid})
-            g.ldap.modify(dn,{'status':"C",'timeLastUsed':myldap.ldap_time()})
+            g.ldap.modify(res[0].dn,{'status':"C",'timeLastUsed':myldap.ldap_time()})
             if not config.debug:
-                send_mail('Confirmed organisation',"{} has confirmed".format(cn))
+                send_mail('Confirmed organisation',"{} has confirmed".format(uid))
             flash("Your account has been validated")
             g.ldap.close()
             return redirect(url_for('index'))
@@ -539,14 +543,18 @@ def confirmacct():
 
 if __name__ == '__main__':
     if config.debug:
-        # use the internal toy webserver
+        # use the internal toy webserver. use sudo for root access (needs to be passwordless)
         root_controller = control.RootController(debug=True)
         application.run(debug=True)
     else:
         # we are running For Real, as root
         root_controller = control.RootController()
-        # now drop privilede
         n = pwd.getpwnam("www-data")
+        try: 
+            os.mkdir(os.path.dirname(config.http_socket))
+        except FileExistsError: pass
+        os.chown(os.path.dirname(config.http_socket),n.pw_uid,n.pw_gid)
+        # now drop privilege
         os.setgid(n.pw_gid)
         os.setuid(n.pw_uid)
         # and run the server

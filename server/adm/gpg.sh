@@ -30,10 +30,11 @@ EOF
 }
 
 # batch-generate a key must run as relevant user
-# expects $USER $HOME and $FULLNAME set
+# expects $USER $HOME $MAILNAME and $FULLNAME set
 # emits the fingerprint and then the public key on stdout
 function user_gen_key ()
 {
+    MAILNAME=$(cat /etc/mailname)
     EMAIL=$USER@$MAILNAME
     gen_key $EMAIL "$FULLNAME"
     # now import vmail's key and sign it
@@ -48,6 +49,7 @@ function vmail_gen_key()
 {
     export HOME=/home/vmail
     export USER=vmail
+    MAILNAME=$(cat /etc/mailname)
     EMAIL=vmail@$MAILNAME
     gen_key $EMAIL "Athen Vmail User on $MAILNAME"
     # now export vmail's key

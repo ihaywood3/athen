@@ -5,7 +5,7 @@
 password = "denethor"
 
 # the domain we are serving email for
-domain = "athen.twilightparadox.com"
+domain = "athen-test"
 
 # True if anyone can submit new organisation (i.e. a public open-access server)
 # False you must be logged on as the owner organisation
@@ -18,7 +18,7 @@ owner = ""
 secret_key = "skfjalosfkepw0scl"
 
 # where to put the welcome letters
-latex_path = "/home/ian/athen/latex_output"
+latex_path = "/home/athen/latex_output"
 
 # the source address for letters, lines separated by \\\\
 letter_origin_address = "ATHEN \\\\ 1 Foo St \\\\ Nowhere"
@@ -40,7 +40,7 @@ base_dn = myldap.Ldap_DN('mxdomain=%s,dc=athen,dc=email' % domain)
 public_base_dn = myldap.Ldap_DN("dc=athen,dc=email")
 ldap_user = "cn=admin,%s" % str(public_base_dn)
 certs=('/etc/ssl/certs/athen.pem','/etc/ssl/private/athen.key')
-http_socket='/var/www/athen.sock'
+http_socket='/var/run/athen/athen.sock'
 
 if debug:
     public_ldap = "ldapi://"

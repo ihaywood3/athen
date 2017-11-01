@@ -69,14 +69,17 @@ Edit Organisation: {{ data.cn }}
       {% else %}
       <tr>
 	<th>Password</th>
-	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" />
-	<a class="smalllink" href="/config/rationale.html#password">WARNING</a></td>
+	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
+	<td><a class="smalllink" href="/config/rationale.html#password">WARNING</a></td>
       </tr>
       <tr>
 	<th>Password (repeat)</th>
 	<td><input type="password" length="20" value="{{ userPassword_repeat }}" name="userPassword_repeat" /></td>
       </tr>
       {% endif %}
+	  <tr>
+	    <th>Delivery Format</th>
+	    <td>{{ html_select(['
       <tr>
 	<td></td>
 	<td><input type="submit" name="Submit" /></td>

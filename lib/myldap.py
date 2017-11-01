@@ -241,8 +241,7 @@ class LDAP:
 
     def modify(self, dn, modlist):
         modlist = {k:(ldap3.MODIFY_REPLACE, makelist(modlist[k])) for k in modlist}
-        self.conn.modify(str(dn), modlist)
-        res = self.conn.add(str(dn),oc,data)
+        res = self.conn.modify(str(dn), modlist)
         if not res:
             logging.debug("LDAP modify failed {}".format(repr(self.conn.result)))
             raise MyLDAPException(self.conn.result)

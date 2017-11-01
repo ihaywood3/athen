@@ -1,10 +1,10 @@
 #!/bin/bash
 # creates a background process which stays root and does the root-required work 
 # creating user accounts
-# and launches webserver as low-priviledge user
+# note server.py is responsible for lauching things and dropping root privileges
 
 import os, pwd, multiprocessing, subprocess, select, logging
-#import cherrypy
+
 import util
 
 class RootController:
@@ -14,7 +14,7 @@ class RootController:
         if debug:
             path = ["sudo","/home/ian/athen/server/adm/server.sh"]
         else:
-            path = ["/usr/local/athen/server/adm/server.sh"]
+            path = ["/usr/local/lib/athen/adm/server.sh"]
         self.pro = subprocess.Popen(path,stdin=subprocess.PIPE,
                                     stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT)

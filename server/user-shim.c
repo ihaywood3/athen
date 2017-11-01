@@ -1,7 +1,11 @@
 /* a simple "shim" that is run setuid for a particular user
 hardwrited to only run python scripts in /usr/local/athen/
 (each user gets their own copy or hardlink of this program, 
-all setuid */
+all setuid 
+
+compile with gcc user-shim.c -s -O3  -o user-shim
+
+*/
 
 #include <stdio.h> 
 #include <unistd.h> 

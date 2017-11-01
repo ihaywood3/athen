@@ -2,12 +2,16 @@
 	<VirtualHost _default_:443>
 		ServerAdmin webmaster@HOSTNAME
 		ServerName HOSTNAME
-
-		DocumentRoot /var/www/html/
-		Redirect permanent / https://HOSTNAME/config/index
+                RedirectMatch ^/$ https://HOSTNAME/config/index
 		Alias /roundcube/program/js/tiny_mce/ /usr/share/tinymce/www/
 		Alias /roundcube /var/lib/roundcube
-		Alias /static /var/lib/athen/static
+		Alias /static /usr/local/lib/athen/static
+		<Directory "/usr/local/lib/athen/static">
+			   Options FollowSymLinks
+			   AllowOverride None													                  Require all granted													      </Directory>
+			   
+		DocumentRoot /var/www/html/
+
 		# Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
 		# error, crit, alert, emerg.
 		# It is also possible to configure the loglevel for particular
