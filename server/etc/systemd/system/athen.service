@@ -1,0 +1,11 @@
+[Unit]
+Description=ATHEN web admin service
+After=network.target
+
+[Service]
+
+ExecStart=/usr/bin/python3 /usr/local/lib/athen/python/server.py --systemd
+Type=simple
+
+[Install]
+WantedBy=multi-user.target
