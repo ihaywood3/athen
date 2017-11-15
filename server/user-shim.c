@@ -17,7 +17,7 @@ int main (int argc, char *argv[])
   char *newargv[20];
   short i;
 
-  if (getuid () != 2001 && getuid () != 0) 
+  if (getuid () != 2001 && getuid () != 0 && getuid () != 1000) 
     return 1; // die if we are not real user ID "vmail" or root
   if (argc < 2 || argc > 19)
     return 1;
@@ -27,8 +27,10 @@ int main (int argc, char *argv[])
     return 1;
 
   
-  setreuid(geteuid (), geteuid ()); // set real user ID to same as effective user ID
-
+  if (! setreuid(geteuid (), geteuid ())) // set real user ID to same as effective user ID
+    {
+      return 2;
+    }
 
   snprintf (path, 1024, "/usr/local/lib/athen/python/%s.py", argv[1]); // full path to script
   newargv[0] = "/usr/bin/python3";

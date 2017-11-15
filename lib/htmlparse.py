@@ -45,16 +45,16 @@ def _worker(node,ld):
             for i in node.children: _worker(i,ld)
     elif type(node) is bs4.NavigableString:
         s = str(node)
-        for i in ["\t","\r","\n"]: s = s.replace(i,"")
-        s = s.strip()
-        if s: # don't print a string reduced to nothing
+        for i in ["\r","\n"]: s = s.replace(i," ")
+        s = s.replace("\t","   ")
+        if s.strip(): # don't print a string that's just whitespace
             ld.write(s)
     elif hasattr(node,"children"):
         # some other weird type, but we can descend
         for i in node.children: _worker(i,ld)
 
 def process_html(data,ld):
-    root = bs4.BeautifulSoup(data)
+    root = bs4.BeautifulSoup(data,"lxml")
     _worker(root,ld)
 
 

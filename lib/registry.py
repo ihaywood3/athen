@@ -46,7 +46,7 @@ def register_filetype(suffix,thing):
 
 registry_outputs = OrderedDict({})
 
-def register_outputter(typ,thing):
+def register_outputter(typ,thing,doc=None):
     """
     Register an outputter for a particular 
     type
@@ -57,7 +57,27 @@ def register_outputter(typ,thing):
          and filename all set appropriately.
         thing can raise NotPossible
     """
-    registry_outputs[typ] = thing
+    registry_outputs[typ] = (thing, doc)
+
+
+def null_handler(x):
+    raise NotPossible
+
+register_outputter("none",null_handler,"None")
+
+def call_output(typ, ld):
+    thing, doc = registry_outputs[typ]
+    return thing (ld)
+    
+def get_all_outputs():
+    """Return a list of all output names
+    """
+    return list(registry_outputs.keys())
+
+def get_all_outputs_docs():
+    return [(label, registry_outputs[label][1]) for label in registry_outputs]
+
+
 
 # these are "official" Unicode markup codes
 
@@ -119,6 +139,14 @@ class LogicalDocument:
             self.data['run_data'] = self.userdb.get_run_from_sender(self.data['sender']['email'],(self.data['sender'].get('firstname',"")+" "+self.data['sender'].get('surname','')).strip())
         return self.data['run_data']
 
+    def get_patient_id(self):
+        """Return patient ID based on listed name and DOB
+        Uses userdb"""
+        if not 'patient_id' in self.data:
+            _, firstname, surname = util.break_name(self.data['patient_name'])
+            self.data['patient_id'] = self.userdb.get_patient_id(surname,firstname,self.data['birthdate'])
+        return self.data['patient_id']
+
     def get_unique_id(self):
         """
         Generate a systemwide forever-unique ID for this document
@@ -129,14 +157,14 @@ class LogicalDocument:
         for each document from that sender  (held in the user DB, see userdb.py)
         """
         run_no, initial = self.get_run_data()
-        return initial+str(run_no)+os.environ['USER']
+        return initial+'-'+str(run_no)+os.environ['USER']
 
     def get_filestub(self):
         """Conveinence method generates a 8-letter stub
         for 8.3 DOS style filenames
         uses initials and run_no
         -> run_no must be 5 digits so this will wrap every 100,000 files
-        for a given sender, so not unique forever
+        for a given sender, so unlikely get_unique_id is it is not guaranteed unique forever
         """
         run_no, initial = self.get_run_data()
         run_no = run_no % 100000

@@ -30,7 +30,7 @@ letter_signature = "Ian Haywood"
 letter_network_name = "ATHEN network"
 
 # debugging, True or False
-debug = False
+debug = True
 
 # DONT CHANGE BELOW HERE UNLESS YOU REALLY, REALLY KNOW WHAT YOU ARE DOING
 import util, myldap
@@ -42,10 +42,10 @@ ldap_user = "cn=admin,%s" % str(public_base_dn)
 certs=('/etc/ssl/certs/athen.pem','/etc/ssl/private/athen.key')
 http_socket='/var/run/athen/athen.sock'
 
-if debug:
-    public_ldap = "ldapi://"
-else:
-    public_ldap = "ldaps://hub.athen.email/"
+#if debug:
+public_ldap = "ldapi:///var/run/slapd/ldapi"
+#else:
+#    public_ldap = "ldaps://hub.athen.email/"
 
 
 version = "0.0.1"
@@ -59,7 +59,7 @@ if debug:
     logger.addHandler(lsh)
 else:
     # the user is welcome to wade through the Python logging documentation
-    # and change the logging arrangments to whatever their heart desires
+    # and change the logging arrangments to whatever their heart so desires
     logger.setLevel(logging.DEBUG)
     h = logging.handlers.RotatingFileHandler("/var/log/athen/python.log", maxBytes=100000, backupCount=9)
     h.setFormatter(fmtr)

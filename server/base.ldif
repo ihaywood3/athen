@@ -12,6 +12,7 @@ dn: cn=operator,dc=athen,dc=email
 objectclass: person
 cn: admin
 sn: admin
+userPassword: PASSWD
 
 dn: cn=uidNext,dc=athen,dc=email
 objectclass: uidNext

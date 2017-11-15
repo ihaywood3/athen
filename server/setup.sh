@@ -27,22 +27,17 @@ cd $DIR
 if false; then
 
 apt-get -y update
-DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-ldap dovecot-lmtpd libpam-script python3-ldap3 debconf-utils roundcube roundcube-mysql- roundcube-sqlite3 slapd ldap-utils python3-flask apache2 libapache2-mod-php python3-lxml python3-bs4 python3-waitress libpam-ldapd python3-dateutil wget git runit
+DEBIAN_FRONTEND=noninteractive apt-get -y install apache2 dovecot-imapd dovecot-ldap dovecot-lmtpd libpam-script python3-ldap3 debconf-utils roundcube roundcube-mysql- roundcube-sqlite3 ldap-utils python3-flask apache2 libapache2-mod-php python3-lxml python3-bs4 python3-waitress libpam-ldapd python3-dateutil wget git runit
 cat ./debconf.keys | debconf-set-selections
-
+apt-get -y install slapd # user will enter password
 DEBIAN_FRONTEND=noninteractive apt-get -y install postfix postfix-ldap 
 
-# FXIME: currently using compiled bleeding-edge gnupg and its python binding 'gpg' from offical GPGME
+# FIXME: currently using compiled bleeding-edge gnupg and its python binding 'gpg' from offical GPGME
 apt-get install automake debhelper dh-autoreconf gettext autopoint file ghostscript help2man libbz2-dev libcurl4-gnutls-dev libgnutls28-dev libldap2-dev libnpth0-dev libreadline-dev libsqlite3-dev libusb-dev pkg-config texinfo transfig zlib1g-dev swig libncurses5-dev python3-dev
-
 
 cd ~
 mkdir -p gnupg_builds
 cd gnupg_builds
-git clone https://github.com/ihaywood3/pgp-mime
-cd pgp-mime
-python3 setup.py install
-cd ..
 
 wget -c https://gnupg.org/ftp/gcrypt/gnupg/gnupg-2.2.1.tar.bz2
 wget -c https://gnupg.org/ftp/gcrypt/libgpg-error/libgpg-error-1.27.tar.bz2
@@ -66,8 +61,15 @@ for i in libgpg-error-1.27 libassuan-2.4.3 libgcrypt-1.8.1 libksba-1.3.5 pinentr
 done
 
 
-# compile the shim0
-gcc user-shim.c -s -O3  -o user-shim
+git clone https://github.com/ihaywood3/pgp-mime
+cd pgp-mime
+python3 setup.py install
+cd ..
+
+cd $DIR
+
+# compile the shim, try to make it small
+gcc user-shim.c -s -O3 -o user-shim
 
 cp -R etc/* /etc/
 
@@ -151,8 +153,6 @@ else
     echo /etc/ssl/certs/athen.pem
 fi
 
-fi
-
 if [ ! -L /var/lib/dbconfig-common/sqlite3/roundcube/roundcube ] ; then
     echo Database is not a link
     if [ -f ~athen/roundcube.sqlite ] ; then
@@ -176,22 +176,31 @@ find /etc/ -name '*.in' -print | while read file ; do
 				 done
 
 
+# apache setup
+a2enmod ssl
+a2enmod proxy
+a2ensite default-ssl
+
+
 # install our LDAP schema
 ldapadd -Y EXTERNAL -H ldapi:/// -f ./athen.ldif
 # change LDAP config to our specifications
 ldapmodify -Y EXTERNAL -H ldapi:/// -f config.ldif
+
+fi
+
+HOSTNAME=athen-test
+
+LDAP_PASSWORD=$(dd if=/dev/urandom bs=1 count=20 | base32)
+echo bindpw $LDAP_PASSWORD >> /etc/nslcd.conf
+
 # stop the server
 service slapd stop
 # wipe LDAp files
 rm -f /var/lib/ldap/*
 # restore with our contents
-cat ./base.ldif | sed -e "s/HOSTNAME/$HOSTNAME/" | slapadd -n 1 
+cat ./base.ldif | sed -e "s/HOSTNAME/$HOSTNAME/;s:PASSWD:$(slappasswd -s $LDAP_PASSWORD):" | slapadd -n 1
 chown -R openldap:openldap /var/lib/ldap/*
 # and restart
 service slapd start
 
-
-# apache setup
-a2enmod ssl
-a2enmod proxy
-a2ensite default-ssl

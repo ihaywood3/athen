@@ -44,7 +44,7 @@ Edit Account: {{ data.cn }}
 	<th>State/Territory</th>
 	<td>
 	  <select name="st">
-	    {{ html_select(['ACT','WA','TAS','VIC','NT','SA','QLD','Norfolk Is','NSW'],data['st'])|safe}}
+	    {{ html_select(['ACT','WA','TAS','VIC','NT','SA','QLD','Norfolk Is','NSW'],data['st'])}}
 	    </select>
       <tr>
 	<th>Telephone</th>
@@ -73,7 +73,7 @@ Edit Account: {{ data.cn }}
       </tr>
 	<th>Password</th>
 	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
-	  <a class="smalllink" href="/config/rationale.html#password">WARNING</a>
+      <td><a class="smalllink" href="/config/rationale.html#password">WARNING</a></td>
       </tr>
       <tr>
 	<th>Password (repeat)</th>
@@ -85,10 +85,16 @@ Edit Account: {{ data.cn }}
 	<td><label for="status_closed"><input type="check" name="status_closed" value="yes" id="status_closed" />Mark as closed</label></td>
       </tr>
       {% endif %}
-      <tr>
-	<td></td>
-	<td><input type="submit" name="Submit" /></td>
-      </tr>
+	  <tr>
+	    <th>Delivery Format</th>
+	    <td>
+	      <select name="deliveryFormat">{{ html_select(outputs,data.get('deliveryFormat','none'))}}</select>
+	    </td>
+	  </tr>
+	  <tr>
+	    <td></td>
+	    <td><input type="submit" name="Submit" /></td>
+	  </tr>
     </table>
   </p>
 </form>

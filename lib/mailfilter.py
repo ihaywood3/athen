@@ -9,11 +9,13 @@ from collections import defaultdict
 import email.mime.multipart
 import email.utils
 from registry import *
-import util, myldap
+import util, myldap, config, htmlparse, textparse
+
 
 SUBJECT_RE=re.compile(r"\[([A-Za-z\-' ]+, [A-Za-z\-' ]+) \((M|F|O|A)\) DOB: ?([0-9\/]+) (.+, .+ [0-9]{4})\] (.*)$", re.IGNORECASE)
+SUBJECT_RE_NOADDR=re.compile(r"\[([A-Za-z\-' ]+, [A-Za-z\-' ]+) \((M|F|O|A)\) DOB: ?([0-9\/]+) *\] (.*)$", re.IGNORECASE)
 
-logger = None
+logger = logging.getLogger(__name__)
 
 def enrich_name_via_ldap(name):
     try:
@@ -30,7 +32,7 @@ def enrich_name_via_ldap(name):
                     fullname = name["firstname"] + " " + name["surname"]
                     if len(fullname) > 5:
                         logger.info("searching using name {}".format(fullname))
-                        res2 = hub.query("(cn=%s)",recipient_name,base=res[0],fields=['providerNumber'])
+                        res2 = hub.query("(cn=%s)",fullname,base=res[0].dn,fields=['providerNumber'])
                         if res2 and "providerNumber" in res2[0]:
                             name['provider_number'] = res2[0]['providerNumber']
                             logger.info("Found directly provider number {}".format(res2[0]['providerNumber']))
@@ -49,7 +51,7 @@ def enrich_name_via_ldap(name):
         logger.exception("error finding provider number from public LDAP")
 
 
-def _worker(user,msg,ld):
+def _worker(u_ctx,msg,ld):
     """
     Process a message using the handlers that
     have been linked in by imported modules
@@ -57,16 +59,22 @@ def _worker(user,msg,ld):
     """
     if "Date" in msg and not ld.has('document_time'):
         ld.document_time = email.utils.parsedate_to_datetime(msg['Date'])
-    if "Subject" in msg and "patient_name" not in ld:
+    if "Subject" in msg and not ld.has('patient_name'):
         m = SUBJECT_RE.match(msg['Subject'])
         if m:
             ld.patient_name = m.group(1)
             ld.sex = m.group(2)
             ld.birthdate = util.parse_date(m.group(3),ld)
             ld.patient_address = m.group(4)
-            logger.info("Matched email subject patient_name '{}' sex '{}' birthdate '{}' address '{}'".format(ld.patient_name,ld.sex,ld.birthdate,ld.patient_address)) 
+            logger.info("Matched email subject patient_name '{}' sex '{}' birthdate '{}' address '{}'".format(ld.patient_name,ld.sex,ld.birthdate,ld.patient_address))
+        m = SUBJECT_RE_NOADDR.match(msg['Subject'])
+        if m:
+            ld.patient_name = m.group(1)
+            ld.sex = m.group(2)
+            ld.birthdate = util.parse_date(m.group(3),ld)
+            logger.info("Matched email subject patient_name '{}' sex '{}' birthdate '{}' no address".format(ld.patient_name,ld.sex,ld.birthdate))
     if "To" in msg and not ld.has("recipient"):
-        recipient_email = user+'@'+config.domain
+        recipient_email = u_ctx['USER']+'@'+config.domain
         for recipient_name, rep_email2 in email_targets(msg):
             if rep_email2 == recipient_email:
                 r = defaultdict(lambda: '')
@@ -78,7 +86,7 @@ def _worker(user,msg,ld):
                 break
     for sender_hdr in ["X-OpenPGP-Signer","From"]:
         if not ld.has("sender") and sender_hdr in msg:
-            senders = email_sources(msg,field=sender_hdr)
+            senders = list(email_sources(msg,field=sender_hdr))
             if senders:
                 sender_name, sender_email = senders[0]
                 s = defaultdict(lambda: '')
@@ -112,7 +120,7 @@ def _worker(user,msg,ld):
                 elif one_with_attachments and one_with_html is None:
                     process(one_with_attachments)
                 else:
-                    # Aargh! can't safely decide.
+                    # Aargh! we can't safely decide which alternative to use
                     raise NotPossible
         else:
             for child in msg.get_payload():
@@ -124,23 +132,33 @@ def _worker(user,msg,ld):
             # so we ignore them
             logger.info("Ignored small image attachment")
         else:
-            # but any other image (attachment, or bigger than 16K), we barf
+            # but any other image (attachment, or bigger than 16K), we bork
             raise NotPossible
     elif msg.get_content_type() in registry_mime:
-        logger.info("process attachment MIME {}'".format(msg.get_content_type()))
-        registry_mime[msg.get_content_type()] (msg.get_payload(),ld)
+        logger.info("processing attachment by MIME {}'".format(msg.get_content_type()))
+        payload = msg.get_payload(decode=True) # this alawys returns a bytes. grr.
+        if msg.get_content_maintype() == 'text': # for text really means sense to be a str
+            charset = msg.get_charset()
+            if charset:
+                charset = charset.input_charset
+            if not charset:
+                charset = 'us-ascii'
+            payload = str(payload,charset)
+        # other amjor types the handler here is expected to cope with a bytes
+        registry_mime[msg.get_content_type()] (payload,ld)
     else:
         unprocessed = True
-        fname = msg.get_filename().lower()
+        fname = msg.get_filename()
         if fname:
-            for k, v in registry_filetypes:
+            fname = fname.lower()
+            for k in registry_filetypes:
                 if fname.endswith(k):
                     logger.info("attached file {} ending with {}, processing".format(fname,k))
                     unprocessed = False
-                    v (msg, ld)
+                    registry_filetypes[k] (msg, ld)
                     break
         if unprocessed:
-            raise NotPossible
+            raise NotPossible()
 
 def process(u_ctx,msg,udb):
     global logger
@@ -149,11 +167,11 @@ def process(u_ctx,msg,udb):
         return msg
     ld = LogicalDocument(udb)
     try:
-        _worker(msg,ld)
+        _worker(u_ctx,msg,ld)
         for i in myldap.ldap_sort(u_ctx['deliveryFormat']):
             try:
-                if i in registry_outputs:
-                    attachment = registry_outputs[i] (ld, msg)
+                if i in get_all_outputs():
+                    attachment = call_output(i, ld)
                     logging.info("generated attachment type {}".format(i))
                     if attachment:
                         attached = False
@@ -169,9 +187,11 @@ def process(u_ctx,msg,udb):
                             newmsg = email.mime.multipart.MIMEMultipart(_subtype='mixed')
                             # copy across all the headers except the content type and encoding
                             for hdr, val in msg.items():
-                                if hdr.lower() not in ['content-type','content-transfer-encoding']:
+                                if hdr.lower() not in ['content-type','content-transfer-encoding','content-disposition']:
                                     newmsg[hdr] = val
                                     del msg[hdr]
+                            if not 'Content-Disposition' in msg:
+                                msg['Content-Disposition'] = 'inline'
                             # and add back in as attachment to our new msg
                             newmsg.attach(msg)
                             newmsg.attach(attachment)
