@@ -169,7 +169,7 @@ def make_hl7(style,embed,ld):
            }
     pid = {0:"PID",
            1:"1",
-           # standards say PID-3 is required. Have wild samples with it blank .We can only really generate fake IDs anyway. AHML complains about no PID-3
+           # standards say PID-3 is required. Have in-the-wild samples with it blank .We can only really generate fake IDs anyway. AHML complains about no PID-3
            3:(ld.get_patient_id(),"","",(semail,config.domain,"DNS")),
            5:(patient_surname,patient_firstname,patient_auxnames,"","","","L"),
            7:ld.birthdate,
@@ -196,16 +196,16 @@ def make_hl7(style,embed,ld):
            3:(ld.get_unique_id(),config.domain,config.domain,'DNS'),
            4:("11488-4","Consultation Note","LN"),
            7:ld.get_document_time(),
-           16:get_xcn(ld.recipient),
-           20:"LN="+ld.get_unique_id(), # black box filed in HL7 official, AU standard has mini-language, page 21 of 2.3.1 4007.2 standards
+           16:get_xcn(ld.recipient), # the "requesting doctor" doesn't make much sense for letters but EMRs may use it for the receiving doctor
+           20:"LN="+ld.get_unique_id(), # black box field in HL7 official, AU standard has its own mini-language, page 21 of 2.3.1 4007.2 standards
            22:ld.get_document_time(),
            24:"PHY", # "physician note": used for all letters
            25:"F", # result status "F" = final result table 0123 page 325 2.3.1 Standards
-           32:(get_xcn(ld.sender,True),ld.get_document_time(),ld.get_document_time()),
+           32:(get_xcn(ld.sender,True),ld.get_document_time(),ld.get_document_time()), # the "pathologist" and times are beginning and end of the "observation"
            45:""}
     obx = {0:"OBX",
            1:"1", # set number - increment for each OBX
-           11:"F", # result status  table 85 on page 527
+           11:"F", # result status  F=final table 85 on page 527
            17:""}
     if embed == "FT":
         obx[3] =("11488-4","Consultation Note","LN")
