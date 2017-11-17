@@ -1,45 +1,63 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <link rel="stylesheet" href="/static/style.css" />
-    <title>ATHEN Main Server: {% block title %}{% endblock %}</title>
-</head>
-  <body>
-    <div id="content">
-    <div id="sidebar">
-      <ul>
-	<li /><a href="/config/index">Home</a>
-	<li /><a href="/config/rationale.html">Rationale</a>
+<html lang="en"><head>
+      <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="/static/style.css" />
+		<title>ATHEN Main Server: {% block title %}{% endblock %}</title>
+   </head>
+   <body>
+     <div id="content">
+       <div class="sidebar" id="myTopnav">
+	<a href="/config/index">Home</a>
+	<a href="/config/rationale.html">Rationale</a>
 	{% if 'username' in session %}
-	<li />Logged in as {{ session.username }}
-	<li /><a href="/config/logout">Logout</a>
-	<li /><a href="/config/acct/edit">Edit Details</a>
-	<li /><a href="/config/user/list">List Users</a>
+	<span class="instead_of_link">Logged in as {{ session.username }}</span>
+	<a href="/config/logout">Logout</a>
+	<a href="/config/acct/edit">Edit Details</a>
+	<a href="/config/user/list">List Users</a>
 	{% else %}
-	<li /><a href="/config/login">Login</a>
+	<a href="/config/login">Login</a>
 	{% endif %}
-	<li /><a href="/config/confirm">Confirm registration</a>
-	<li /><a href="/config/acct/new?type=O">New Organisation</a>
-	<li /><a href="/config/acct/new?type=P">New Individual</a>
-      </ul>
-    </div>
-    <div id="main">
-      <h2>ATHEN Main Server: {{ self.title() }}</h2>
-      <p>
-	{% with messages = get_flashed_messages() %}
-	{% if messages %}
-	<ul class="flash">
-      {% for message in messages %}
-      <li>{{ message }}</li>
-      {% endfor %}
-	</ul>
-	{% endif %}
-	{% endwith %}
-      </p>
-      <div id="content">{% block body %}{% endblock %}</div>
-    </div></div>
-{% if fragment is defined and fragment %}
-{% else %}
-  </body>
+	<a href="/config/confirm">Confirm registration</a>
+	<a href="/config/acct/new?type=O">New Organisation</a>
+	<a href="/config/acct/new?type=P">New Individual</a>
+	<a href="javascript:void(0);" style="font-size:15px;" class="icon" onclick="myFunction()">☰</a>
+       </div>
+         
+         <div id="main">
+	   <h2>ATHEN Main Server: {{ self.title() }}</h2>
+	   <p>
+	     {% with messages = get_flashed_messages() %}
+	     {% if messages %}
+	     <ul class="flash">
+	       {% for message in messages %}
+	       <li>{{ message }}</li>
+	       {% endfor %}
+	     </ul>
+	     {% endif %}
+	     {% endwith %}
+	   </p>
+	   <div id="content">
+	     {% block body %}{% endblock %}
+	   </div>
+	 </div>
+     </div>
+     
+     <script>
+       function myFunction() {
+           var x = document.getElementById("myTopnav");
+           if (x.className === "sidebar")
+           {
+              x.className += " responsive";
+           }
+           else
+           {
+              x.className = "sidebar";
+           }
+       }
+     </script>
+     {% if fragment is defined and fragment %}
+     {% else %}
+   </body>
 </html>
 {% endif %}

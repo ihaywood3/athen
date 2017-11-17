@@ -84,6 +84,17 @@ body{
   border-bottom: 1px solid #6a6b6a;
 }
 
+.sidebar span.instead_of_link {
+  /*float: left;*/
+  display: block;
+  color: #e2e2e2;
+  /*text-align: center;*/
+  padding: 14px 16px;
+  text-decoration: none;
+  font-size: 17px;
+  #border-bottom: 1px solid #6a6b6a;
+}
+
 .sidebar a:hover {
   background-color: #02433d;
   color: white;
@@ -143,6 +154,11 @@ input[type="submit"] {
     top: 0;
   }
   .sidebar.responsive a {
+    float: none;
+    display: block;
+    text-align: left;
+  }
+  .side.responsive span.instead_of_link {
     float: none;
     display: block;
     text-align: left;
