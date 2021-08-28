@@ -56,6 +56,11 @@ class UserDB(object):
                                   level integer, 
                                   messages_rowid integer);
     """)
+                cur.execute("""
+                create table patients (surname text, 
+                                       firstname text,
+                                       birthdate date);
+                """)
                 cur.close()
                 self.db.commit()
             else:
@@ -79,6 +84,26 @@ class UserDB(object):
         cur = self.db.cursor()
         cur.execute(query)
         res = cur.fetchall()
+        cur.close()
+        return res
+
+    def get_patient_id(self, surname, firstname, birthdate):
+        """
+        Give us a local patient ID given the name and DOB
+        HL7 requires this
+        """
+        self.__need_db()
+        cur = self.db.cursor()
+        surname = surname.upper()
+        firstname = firstname.upper()
+        cur.execute("select rowid from patients where surname = ? and firstname = ? and birthdate = ?",(surname,firstname,birthdate))
+        row = cur.fetchone()
+        if row:
+            res = row[0]
+        else:
+            cur.execute("insert into patients(surname, firstname, birthdate) values (?, ?, ?)",(surname,firstname,birthdate))
+            res = cur.lastrowid
+            self.db.commit()
         cur.close()
         return res
 
@@ -363,8 +388,8 @@ _root = logging.getLogger()
 _root.addHandler(SQLiteHandler(_udb))
 
 
-#if __name__ == "__main__":
-try: os.unlink("/home/ian/data.sqlite")
-except: pass
-import doctest
-doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE|doctest.ELLIPSIS)
+if __name__ == "__main__":
+    try: os.unlink("/home/ian/data.sqlite")
+    except: pass
+    import doctest
+    doctest.testmod(optionflags=doctest.NORMALIZE_WHITESPACE|doctest.ELLIPSIS)

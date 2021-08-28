@@ -3,12 +3,12 @@
 """
 Module for habndling RTF and other files and 
 extracting relevant data
-relies on https://pypi.python.org/pypi/pyth/
+FUTURE: relies on https://pypi.python.org/pypi/pyth/
 """
 
 
-from pyth.plugins.rtf15.reader import Rtf15Reader
-from pyth.plugins.plaintext.writer import PlaintextWriter
+#from pyth.plugins.rtf15.reader import Rtf15Reader
+#from pyth.plugins.plaintext.writer import PlaintextWriter
 
 import re, io
 
@@ -88,13 +88,12 @@ def parse_txt(txt,orig):
 if __name__=='__main__':
     parse_rtf('/home/ian/test.rtf')
 
-def convert_rtf_from_ld(ld):
+def convert_rtf_from_ld(text):
     """
-    Take a registry.LogicalDocument, using our funky markup, and convert to RTF
+    Take text from registry.LogicalDocument, using our funky markup, and convert to RTF
     """
-    text = ld.getvalue()
     # first, all non-ASCII codes must be escaped
-    # our target charset is "ANSI" aka "windows-1259"
+    # our target charset is "ANSI" aka "Windows-1259"
     # for this range the Unicode code points are the same as ISO-8859-1 and in turn the same same as the "ANSI" 
     for i in range(0xa0,0x100):
         text = text.replace(chr(i),"\\'{:x}".format(i))
@@ -138,11 +137,11 @@ def convert_rtf_from_ld(ld):
     text = text.replace(EBOLD,"\\b0 ")
     text = text.replace(UND,"\\ul ")
     text = text.replace(EUND,"\\ul0 ")
-    # can't find spec, but cribbing from hox LibreOffice does it
-    text = re.sub("\uEF02([^\uEF03]+)\uEF03([^\uEF04]+)\uEF04",r'{{\field{\*\fldinst HYPERLINK "\1" }{\fldrslt {\2}}}}',text)
+    # can't find spec for RTF URLs, but cribbing from how LibreOffice does it
+    text = re.sub("\uEF02([^\uEF03]+)\uEF03([^\uEF04]+)\uEF04",r'{{\\field{\\*\\fldinst HYPERLINK "\1" }{\\fldrslt {\2}}}}',text)
     text = text.replace(LINE,r"\line ")
-    text = text.reaplce(PARA,r"\par ")
-    text = re.sub("[\u2028\u2029]*\uEF05([^\uEF06]+)\uEF06[\u2028\u2029]*",lambda x: r'{\b\ul\fs28 %s \par}' % x.group(1).upper(),text) # header 1 : old, underline, 14 point, upcase
-    text = re.sub("[\u2028\u2029]*\uEF07([^\uEF08]+)\uEF08[\u2028\u2029]*",r"{\b\fs28 \1 \par}",text) # header 2 bold 
-    text = re.sub("[\u2028\u2029]*\uEF09([^\uEF0A]+)\uEF0A[\u2028\u2029]*",r"{\b \1 \par}",text) # header 3 bold
+    text = text.replace(PARA,r"\par ")
+    text = re.sub("[\u2028\u2029]*\uEF05([^\uEF06]+)\uEF06[\u2028\u2029]*",lambda x: r'{\par }{\b\ul\fs28 %s \par}<\par }' % x.group(1).upper(),text) # header 1 : old, underline, 14 point, upcase
+    text = re.sub("[\u2028\u2029]*\uEF07([^\uEF08]+)\uEF08[\u2028\u2029]*",r"{\\par }{\\b\\fs28 \1 \\par}{\\par }",text) # header 2 bold 
+    text = re.sub("[\u2028\u2029]*\uEF09([^\uEF0A]+)\uEF0A[\u2028\u2029]*",r"{\\par }{\\b \1 \\par}{\\par }",text) # header 3 bold
     return r'{\rtf1\ansi %s}' % text

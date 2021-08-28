@@ -33,7 +33,7 @@ def send_mail(subject, text, dvi=None, host=None):
             ))
     if host is None:
         host=DEFAULT_SERVER
-    smtp = SMTP(host)
+    smtp = smtplib.SMTP(host)
     smtp.starttls()
     smtp.sendmail(DEFAULT_FROM, [DEFAULT_TO], msg.as_string())
     smtp.close()

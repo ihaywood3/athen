@@ -15,13 +15,14 @@ Edit Organisation: {{ data.cn }}
 <input type="hidden" name="type" value="O" />
   <p>
     <table class="formfields">
+      <tbody>
       <tr>
 	<th>Organisation Name</th>
 	<td>
 	  {% if mode == "new" %}
 	  <input type="text" name="o" length="20" value="{{ data.o }}" />
 	  {% else %}
-	  {{ data.o }}
+	  {{ data.o|safe}}
 	  {% endif %}
 	</td>
       </tr>
@@ -41,7 +42,7 @@ Edit Organisation: {{ data.cn }}
 	<th>State/Territory</th>
 	<td>
 	  <select name="st">
-	    {{ html_select(['ACT','WA','TAS','VIC','NT','SA','QLD','Norfolk Is','NSW'],data['st'])|safe}}
+	    {{ html_select(['ACT','WA','TAS','VIC','NT','SA','QLD','Norfolk Is','NSW'],data.get('st',None)) }}
 	    </select>
       <tr>
 	<th>Telephone</th>
@@ -55,7 +56,7 @@ Edit Organisation: {{ data.cn }}
 	<th>Type</th>
 	<td>
 	  <select name="businessCategory">
-	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health','Community Health','headspace centre'],data.get('businessCategory',None))|safe}}
+	    {{ html_select(['General Practice','Specialist Rooms','Hospital','Law firm','Police','Disability NGO','Child Protection','Allied Health','Community Health','headspace centre'],data.get('businessCategory',None))}}
 	    </select>
 	</td>
       </tr>
@@ -69,18 +70,25 @@ Edit Organisation: {{ data.cn }}
       {% else %}
       <tr>
 	<th>Password</th>
-	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" />
-	<a class="smalllink" href="/config/rationale.html#password">WARNING</a></td>
+	<td><input type="password" length="20" value="{{ userPassword }}" name="userPassword" /></td>
+	<td><a class="smalllink" href="/config/rationale.html#password">WARNING</a></td>
       </tr>
       <tr>
 	<th>Password (repeat)</th>
 	<td><input type="password" length="20" value="{{ userPassword_repeat }}" name="userPassword_repeat" /></td>
       </tr>
       {% endif %}
+	  <tr>
+	    <th>Delivery Format</th>
+	    <td>
+	      <select name="deliveryFormat">{{ html_select(outputs,data.get('deliveryFormat','none')) }}</select>
+	    </td>
+	  </tr>
       <tr>
 	<td></td>
 	<td><input type="submit" name="Submit" /></td>
       </tr>
+      </tbody>
     </table>
   </p>
 </form>

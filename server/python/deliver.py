@@ -1,3 +1,4 @@
+
 #!/usr/bin/python3
 
 """
@@ -14,7 +15,7 @@ Also  used as a library when unspooling and sending
 
 import os, sys, os.path, email, smtplib, subprocess, email.generator, traceback, logging
 
-import pgp_mime.parse
+import pgp_mime.parse, gpg
 
 if os.path.exists("/home/ian/athen/lib"):
     sys.path.append("/home/ian/athen/lib")
@@ -57,34 +58,32 @@ def get_user_context(user=None):
         res = ldap.query("(&(objectclass=posixAccount)(uid=%s))",user,fields=["uidNumber","homeDirectory",'gidNumber','cn','deliveryFormat','deliveryMethod'])
         if len(res) == 0:
             raise NoSuchUser("no such user in LDAP:"+user,data="5.2.1")
-
-
-        # give us a minimally sane environment
         user_context = {}
-        user_content['UID'] = int(res[0].uidNumber) # pure efficiency: os.getuid() would always work
+        user_content['UID'] = int(res[0].uidNumber) # pure efficiency: os.getuid() should always work
         if os.getuid() != user_context['UID']:
             raise util.AthenError("LDAP uid is {} system user id is {}".format(res[0].uidNumber, os.getuid()),data="5.2.1")
-        user_context["HOME"] = res[0].homeDirectory
+        user_context["HOME"] = res[0].homeDirectory # again we're jsut caching os.environ["HOME"]
         user_context["USER"] = user
         user_context["REALNAME"] = res[0].cn
-        
-        if old_lang: os.environ["LANG"] = old_lang
         user_context["GID"] = res[0].gidNumber
-        user_context['deliveryFormat'] = res[0],get_field('deliveryFormat',[],True)
-        user_context['deliveryMethod'] = res[0].get_field('deliverymethod',None)
+        user_context['deliveryFormat'] = res[0].get_field('deliveryFormat',['none'],True)
+        #user_context['deliveryMethod'] = res[0].get_field('deliverymethod',None)
 
-        if set_env:
-            try:
-                old_lang = os.environ["LANG"]
-            except:
-                old_lang = None
-            # because security: clear the environment
-            os.environ.clear()
-            for e in ['USER',"HOME","REALNAME"]:
-                os.environ[e] = user_context[e]
-            os.environ['LOGNAME'] = user_context['USER']
-            os.environ["PATH"] = "/bin:/usr/bin"
-        return user_context
+    if set_env:
+        # ensure a minimally sane UNIX environment
+        try:
+            old_lang = os.environ["LANG"]
+        except:
+            old_lang = None
+        # because security: clear the environment
+        os.environ.clear()
+        for e in ['USER',"HOME","REALNAME"]:
+            os.environ[e] = user_context[e]
+        os.environ['LOGNAME'] = user_context['USER'] # and old SysV'ism
+        os.environ["PATH"] = "/bin:/usr/bin"
+        if old_lang:
+            os.environ['LANG'] = old_lang
+    return user_context
 
 
 class DovecotDeath(util.AthenError):
@@ -115,18 +114,26 @@ def postfix_deliver(msg,want_dsn=False):
     smtp.close()
 
 def dovecot_deliver(uctx,msg,box="INBOX"):
-    pro = subprocess.Popen(["/usr/lib/dovecot/deliver","-d",uctx["USER"],"-f",msg['From'],'-m',box,'-e'],stdin=subprocess.PIPE)
-    g = email.generator.BytesGenerator(pro.stdin)
-    g.flatten(msg)
-    pro.stdin.close()
-    logging.debug("Dovecot delivery from '{}' to '{}' subject '{}' id '{}'".format(msg['From'],msg['To'],msg['Subject'],msg['Message-Id']))
+    cmd = ["/usr/lib/dovecot/deliver","-d",uctx["USER"],"-f",msg['From'],'-m',box,'-e']
+    logging.debug("about to execute {}".format(repr(cmd)))
+    pro = subprocess.Popen(cmd,stdin=subprocess.PIPE,stderr=subprocess.PIPE)
     try:
+        g = email.generator.BytesGenerator(pro.stdin)
+        g.flatten(msg)
+        pro.stdin.close()
         pro.wait(120)
+        logging.debug("Dovecot delivery from '{}' to '{}' subject '{}' id '{}'".format(msg['From'],msg['To'],msg['Subject'],msg['Message-Id']))
     except:
-        pro.kill()
-        raise util.AthenError("Dovecot process failed to finish in 120 sec",data="5.2.0")
+        data = ""
+        try:
+            data = pro.stderr.read()
+        except: pass
+        raise DovecotDeath("Dovecot process failed {}".format(data))
     if pro.returncode != 0:
-        raise DovecotDeath("Dovecot died",data=pro.returncode)
+        data = ""
+        try: data = pro.stderr.read()
+        except: pass
+        raise DovecotDeath("Dovecot died stderr {} return code {}".format(repr(data),pro.returncode))
 
 def do_delivery(uctx, msg):
     with gpg.Context(armor=True) as ctx:

@@ -55,11 +55,13 @@ def _break_field(l):
     
 def ldap_sort(l):
     """sort a list of string fields using the {n}foo convention
+    If no {n}, consider as 0 (i.e head of list)
 
     >>> ldap_sort(["{3}burble", "{2}baz", "{1}foo"])
-    [(1, 'foo'), (2, 'baz'), (3, 'burble')]
+    ['foo', 'baz', 'burble']
     """
-    return sorted((_break_field(i) for i in l),key=lambda x: x[0])
+    assert type(l) is list
+    return [i[1] for i in sorted((_break_field(i) for i in l),key=lambda x: x[0])]
     
 class Ldap_DN:
     """Wrapper around LDAP domain paths
@@ -129,8 +131,12 @@ class Ldap_Row:
     
     def has_key(self, f):
         f = self.normalise_field_name(f)
-        return f in self.nvals
+        return (f in self.nvals)
 
+    def __contains__(self, key):
+        key = self.normalise_field_name(key)
+        return (key in self.nvals)
+    
     def __getattr__(self, name):
         return self.get_field(name)
     
@@ -152,6 +158,9 @@ class Ldap_Row:
         self.modlist = {}
         
     def normalise_field_name(self, name):
+        if not type(name) is str:
+            logging.warn("name {}  not string".format(repr(name)))
+            name = str(name)
         name = name.lower()
         for v, c in FIELD_CONVERSIONS:
             if name == v: name = c
@@ -241,8 +250,7 @@ class LDAP:
 
     def modify(self, dn, modlist):
         modlist = {k:(ldap3.MODIFY_REPLACE, makelist(modlist[k])) for k in modlist}
-        self.conn.modify(str(dn), modlist)
-        res = self.conn.add(str(dn),oc,data)
+        res = self.conn.modify(str(dn), modlist)
         if not res:
             logging.debug("LDAP modify failed {}".format(repr(self.conn.result)))
             raise MyLDAPException(self.conn.result)

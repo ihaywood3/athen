@@ -5,6 +5,7 @@ function cleanup()
     if [ "$ENCRYPT_FLAG" == "Y" ] ; then
 	cd /
 	if [ -n "$LOOPDEV" ] ; then
+	    HOME=/home/athen/home/$USER chpst -u :$NUID:2000 $GPGSCRIPT kill_agent
 	    umount /dev/mapper/$USER || true
 	    cryptsetup close $USER || true
 	    losetup -d $LOOPDEV || true
@@ -31,11 +32,11 @@ GPGSCRIPT=`pwd`/gpg.sh
 
 if [ ! -e /home/athen/home ] ; then
     mkdir -p /home/athen/home
-    chown athen:vmail /home/athen/home
+    chown athen:athenusers /home/athen/home
 fi
 if [ ! -e /home/vmail/spool ] ; then
     mkdir -p /home/vmail/spool
-    chown vmail:vmail /home/vmail/spool
+    chown vmail:athenusers /home/vmail/spool
 fi
 if grep -q $USER: /etc/passwd ; then
     echo "ERROR:user already exists in /etc/passwd"
@@ -85,14 +86,14 @@ unset PASSWD
 
 
 # set up the shim for this user
-cp /usr/local/lib/athen/user-shim $USER
-chown $NUID:2000 $USER/user-shim
-chmod 4755 $USER/user-shim
+cp /usr/local/lib/athen/user-shim .
+chown $NUID:2000 ./user-shim
+chmod 4755 ./user-shim
 
 # make private key via gpg
 echo "PROGRESS:70:generating private key"
 #openssl req -new -x509 -nodes -outform PEM -out $USER.pem -newkey rsa -keyout $USER/private.key -subj "/DC=email/DC=athen/O=$REALNAME" -days 3600 -batch > /dev/null
-HOME=/home/athen/home/$USER chpst -u :$NUID:2000 $GPGSCRIPT user_gen_key | chpst -u vmail:vmail $GPGSCRIPT vmail_accept_key
+HOME=/home/athen/home/$USER chpst -u :$NUID:2000 $GPGSCRIPT user_gen_key | chpst -u vmail:athenusers $GPGSCRIPT vmail_accept_key
 HOME=/home/athen/home/$USER chpst -u :$NUID:2000 $GPGSCRIPT kill_agent
 
 echo "PROGRESS:80:creating files"

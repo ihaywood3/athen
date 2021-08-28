@@ -1,18 +1,18 @@
 #!/usr/bin/python
 
 """
-The web interface of the local ("leaf") ATHEN mailserver
+The admin interface for ATHEN servers.
 """
 import sys, os, ldap3, stat, pdb, time, logging, subprocess, threading, pudb, collections, pwd
 if __name__=='__main__':
     sys.path.append('../../lib')
 from util import *
-import config, myldap, control
+import config, myldap, control, registry, pit, hl7.letter
 
 # WARNING: somebody needs to set this up
 root_controller = None
 
-from flask import session, redirect, url_for, escape, request, render_template, g, flash
+from flask import session, redirect, url_for, escape, request, render_template, g, flash, Markup
 import flask
 
 main_lock = threading.Lock() # a lock for creating new users, system stuff is very much one-at-a-time
@@ -21,7 +21,7 @@ app = application
 application.secret_key = config.secret_key
 
 mail_text_template ="""
-Organisation Name: {{cn}}
+Organisation Name: {{cn|latex}}
 Address: {{street}}, {{l}} {{postalCode}} {{st}}
 Telephone: {{telephoneNumber}}
 Fax: {{facsimileTelephoneNumber}}
@@ -31,17 +31,17 @@ Email : {{mail}}
 
 mail_latex_template = """
 \\documentclass[12pt]{letter}
-\\signature{ {{signature}} }
-\\address{ {{originator }} }
+\\signature{ {{signature|latex}} }
+\\address{ {{originator}} }
 \\begin{document}
-\\begin{letter}{ {{title}} {{cn}} \\\\ {{street}} \\\\ {{l}} {{postalCode}} {{st}} }
-\\opening{Dear {{opening}},}
+\\begin{letter}{ {{title}} {{cn|latex}} \\\\ {{street|latex}} \\\\ {{l|latex}} {{postalCode}} {{st|latex}} }
+\\opening{Dear {{opening|latex}},}
 
-Your organisation has been registered on {{ network_name }} using this postal address.
+Your organisation has been registered on {{ network_name|latex }} using this postal address.
 
-Your logon name is\\texttt{ {{uid}} }, and your registration code is\\texttt{ {{nonce}} }
+Your logon name is\\texttt{ {{uid|latex}} }, and your registration code is\\texttt{ {{nonce|latex}} }
 
-To confirm your registration, please go to \\texttt{https://{{domain}} }, click on `Register' and enter in the code above.
+To confirm your registration, please go to \\texttt{https://{{domain|latex}} }, click on `Register' and enter in the code above.
 
 If you did not request registration, plase check if someone in your organisation did register and show them this letter.
 
@@ -52,17 +52,39 @@ If you still have no idea what this letter is about, please contact me on the ab
 \\end{document}
 """
 
+@app.template_filter("latex")
+def latex_filter(data):
+    if type(data) is Markup:
+        return data
+    data = str(data)
+    data = data.replace("\\","\\textbackslash ")
+    latex_esc = {
+        '&':r'\&',
+        '%':r'\%',
+        '$':r'\$',
+        '#':r'\#',
+        '_':r'\_',
+        '{':r'\{',
+        '}':r'\}',
+        '~':r'\textasciitilde ',
+        '^':r'\textasciicircum '}
+    for k in latex_esc:
+        data = data.replace(k,latex_esc[k])
+    return Markup(data)
+    
+
 schema = {
     "org": [
-            ('o', True, None, 'Organisation Name'),
-            ('st', True, None, 'State'),
-            ('l', True, None, 'Town'),
-            ('businessCategory', True, None, 'Business category'),
-            ('street', True, None, 'Street'),
-            ('l', True, None, 'Town'),
-            ('postalCode', True, '[0-9]{4}', 'postcode'),
-            ('telephoneNumber', False, '[0-9 ]{8,10}', 'Telephone number'),
-            ('facsimileTelephoneNumber', False, '[0-9 ]{8,10}', 'Fax number'),
+        ('o', True, None, 'Organisation Name'),
+        ('st', True, None, 'State'),
+        ('l', True, None, 'Town'),
+        ('businessCategory', True, None, 'Business category'),
+        ('street', True, None, 'Street'),
+        ('l', True, None, 'Town'),
+        ('postalCode', True, '[0-9]{4}', 'postcode'),
+        ('telephoneNumber', False, '[0-9 ]{8,10}', 'Telephone number'),
+        ('facsimileTelephoneNumber', False, '[0-9 ]{8,10}', 'Fax number'),
+        ('deliveryFormat', False, '|'.join(registry.get_all_outputs()), 'Preferred delivery format')
         ],
     "person": [ # an "independent user, ie./ not part of an organisation"
         ('st', True, None, 'State'),
@@ -75,7 +97,8 @@ schema = {
         ('sn',True, None, 'Surname'),
         ('medicalSpecialty', True, None, 'Profession/medical specialty'),
         #("ahpra", False, None, "AHPRA registration number"),
-        ('providerNumber', False, '^[0-9]{5,6}[0-9A-Z][A-Z]$', "Medicare provider number")
+        ('providerNumber', False, '^[0-9]{5,6}[0-9A-Z][A-Z]$', "Medicare provider number"),
+        ('deliveryFormat', False, '|'.join(registry.get_all_outputs()), 'Preferred delivery format')
     ],
     "employee": [ # someone working for an org but may not have an account in their own right
         ('givenName', True, None, 'Given name'),
@@ -167,18 +190,23 @@ def newacct():
     data = collections.defaultdict(lambda: "")
     return render_template(templ,mode='new',error_field="",
                            allow_unencrypted_home=allow_unencrypted_home,
-                           data=data)
+                           data=data,
+                           outputs=registry.get_all_outputs_docs())
 
 @app.context_processor
 def select_context():
     def html_select(options,value):
         s = ""
         for i in options:
-            if i == value:
-                s += "<option selected>{}</option>\n".format(i)
+            if type(i) is str:
+                label = d = i
             else:
-                s += "<option>{}</option>\n".format(i)
-        return s
+                label, d = i
+            if value == label:
+                s += "<option selected value=\"{}\">{}</option>\n".format(Markup.escape(label), Markup.escape(d))
+            else:
+                s += "<option value=\"{}\">{}</option>\n".format(Markup.escape(label), Markup.escape(d))
+        return Markup(s)
     return dict(html_select=html_select)
 
 def cmd_check(cmd,outfile):
@@ -208,12 +236,14 @@ def saveacct():
             data['cn'] = data['o']
             data['objectclass'] = ['athenOrganisation','posixAccount']
             if data['businessCategory'] == 'General Practice':
-                title = "Practice Manager \\\\"
+                title = Markup("Practice Manager \\\\")
             else:
-                title = "Manager IT Services \\\\ "
+                title = Markup("Manager IT Services \\\\ ")
             opening = "Madam/Sir"
             namefield = "o"
+            logging.debug("config.base_dn = %r" % config.base_dn)
             new_dn = config.base_dn.add("o",data["o"])
+            logging.debug("new_dn = %r" % new_dn)
         else:
             # an independent person
             templ = "editperson.html"
@@ -231,8 +261,9 @@ def saveacct():
         if len(passwd) < 6:
             raise AthenError("Password must be at least 6 characters","userPassword",data)
         encrypt_flag = "Y"
-        if allow_unencrypted_home and request.form['encryptFlag'] == "no":
+        if (allow_unencrypted_home or config.debug) and request.form['encryptFlag'] == "no":
             encrypt_flag = "N"
+        logging.debug("encrypt flag is %r" % encrypt_flag)
         get_ldap()
         res = g.ldap.query("(uid=%s)",uid,fields=['uid'])
         if len(res) > 0:
@@ -368,7 +399,7 @@ def login():
                 g.ldap.close()
                 return redirect(url_for(path))
         flash("Username or password incorrect")
-    g.ldap.close()
+        g.ldap.close()
     return render_template('login.html',path=path)
 
 def require_login(path='index'):
@@ -418,7 +449,7 @@ def updateacct():
         if request.form.get("status_closed", "no") == "yes":
             data['status'] = 'X'
         data['timeLastUsed'] = myldap.ldap_time()
-        g.ldap.modify(user,dn,data)
+        g.ldap.modify(user.dn,data)
         flash("Record modified")
         g.ldap.close()
         return redirect(url_for("index"))
@@ -514,16 +545,16 @@ def confirmacct():
             nonce = nonce.upper()
             uid = clean_string(request.form['uid'])
             if len(nonce) != NONCELENGTH:
-                raise AthenError("Key is not valid","nonce",{"nonce":nonce,'uid':uid})
+                raise AthenError("Key is an invalid length","nonce",{"nonce":nonce,'uid':uid})
             get_ldap()
-            res = g.ldap.query("(uid=%s)",uidfields=['nonce'])
+            res = g.ldap.query("(uid=%s)",uid,fields=['nonce'],base=config.base_dn)
             if not res:
                 raise AthenError("User ID is not valid","nonce",{"nonce":nonce,"uid":uid})
             if res[0]['nonce'] != nonce:
                 raise AthenError("Key is not valid","nonce",{"nonce":nonce,"uid":uid})
-            g.ldap.modify(dn,{'status':"C",'timeLastUsed':myldap.ldap_time()})
+            g.ldap.modify(res[0].dn,{'status':"C",'timeLastUsed':myldap.ldap_time()})
             if not config.debug:
-                send_mail('Confirmed organisation',"{} has confirmed".format(cn))
+                send_mail('Confirmed organisation',"{} has confirmed".format(uid))
             flash("Your account has been validated")
             g.ldap.close()
             return redirect(url_for('index'))
@@ -538,15 +569,24 @@ def confirmacct():
 
 
 if __name__ == '__main__':
-    if config.debug:
-        # use the internal toy webserver
+    mode = False
+    if config.debug: mode = True
+    if len(sys.argv) > 1:
+        if sys.argv[1] == '--waitress': mode = False
+        if sys.argv[1] == '--debug': mode = True
+    if mode:
+        # use the internal toy webserver. use sudo for root access (needs to be passwordless)
         root_controller = control.RootController(debug=True)
         application.run(debug=True)
     else:
         # we are running For Real, as root
         root_controller = control.RootController()
-        # now drop privilede
         n = pwd.getpwnam("www-data")
+        try: 
+            os.mkdir(os.path.dirname(config.http_socket))
+        except FileExistsError: pass
+        os.chown(os.path.dirname(config.http_socket),n.pw_uid,n.pw_gid)
+        # now drop privilege
         os.setgid(n.pw_gid)
         os.setuid(n.pw_uid)
         # and run the server

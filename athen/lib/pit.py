@@ -1,13 +1,13 @@
 #!/usr/bin/python
 
 import logging, re, time, email.utils, datetime
-from dateutils.relativedelta import relativedelta
-import email.mime.text
+from dateutil.relativedelta import relativedelta as rd
+from email.mime.application import MIMEApplication
 
 try:
     import pudb
 except: pass
-import myldap, config, rtf
+import myldap, config, rtf, hl7.emit
 from registry import *
 
 """A simple PIT generator
@@ -105,10 +105,11 @@ def fix_lines2(doc):
 
     doc = doc.replace(PARA,"\n\n")
     doc = doc.replace(LINE,"\n")
+    doc = doc.strip()
     lines = doc.split("\n")
     for l in lines:
         if len(l) <= 76:
-            yield out
+            yield l.strip()
         else:
             words = l.split()
             out = ""
@@ -121,9 +122,9 @@ def fix_lines2(doc):
                     yield words[0][:75]+"-"
                     words[0] = words[0][75:]
                 else:
-                    yield out
+                    yield out.strip()
                     out = ""
-            if out: yield out
+            if out: yield out.strip()
 
 
 def fix_lines(doc):
@@ -134,27 +135,39 @@ def make_pit_common(ld):
     t = ld.get_document_time()
     enput['time'] = t.strftime("%H:%M")
     enput['date'] = t.strftime("%d/%m/%Y")
-    age = relativedelta(datetime.datetime.now(),ld.birthdate)
+    if not ld.has('birthdate'):
+        raise NotPossible()
+    age = rd(datetime.datetime.now(),ld.birthdate)
     if age.months == 0 and age.years == 0:
         enput['age_unit'] = 'D'
         enput['age'] = "{: >3}".format(age.days)
     elif age.years < 2:
         enput['age_unit'] = "M"
-        enput['age'] = "{: >3}".format(age.moths+(age.years*12))
+        enput['age'] = "{: >3}".format(age.months+(age.years*12))
     else:
         enput['age_unit'] = "Y"
         enput['age'] = "{: >3}".format(age.years)
     enput['dob'] = ld.birthdate.strftime("%d/%m/%Y")
+    if not ld.has('sex'):
+        raise NotPossible()
     enput['sex'] = ld.sex
-    enput['address'] = ld.patient_address
+    if not ld.has('patient_name'):
+        raise NotPossible()
     enput['patient_name'] = ld.patient_name
+    if ld.has('patient_address'):
+        enput['address'] = ld.patient_address
+    else:
+        enput['address'] = ""
     enput['recipient'] = util.fullname(ld.recipient)
-    enput['provider_number'] = ld.recipient.get("provider_number","")
+    pn = ld.recipient.get("provider_number",None)
+    if not pn:  # its unlikely the target EMR can dp much useful without a PN
+        raise NotPossible()
+    enput['provider_number'] = pn
     # in the current implementation, we never know these
     enput['medicare'] = ""
     enput['telephone'] = ""
     run_no,initials = ld.get_run_data() 
-    enput['filename'] = ld.get_filestub()+'.pit'
+    enput['filename'] = ld.get_filestub()+'.PIT'
     enput['run'] = "{:0>4}".format(run_no % 10000) # to fit into 4 digits we incur repetition every 10,000 messages from this sender.
     # use first five letters of username for the PIT "surgery ID"
     enput['id'] = "{: <5}".format(ld.recipient['email'].upper()[:5])
@@ -163,18 +176,23 @@ def make_pit_common(ld):
 def make_pit_text(ld):
     enput = make_pit_common(ld)
     enput['content'] = fix_lines(ld.getvalue())
-    return pit_finish(enput,ld)
+    return pit_finish(enput)
 
 def pit_finish(enput):
     s = re.sub(r"{(.+?)}", lambda m: subst(enput,m.group(1)), template)
-    s = s.replace("\n","\r\n") # use Internet/Windows style newlines
-    # WARNING: kludge approaching
-    # the PIT data will ultimately get converted to ISO-8859-1 charset on the way out via
-    # email.mime
-    # to make sure this works we encode and then decode here
-    s = str(bytes(s,"iso-8859-1","replace"),"iso-8859-1")
-    mt = email.mime.text.MIMEText(s,_subtype="x-pit",_charset="iso-8859-1")
+    s = s.replace("\n","\r\n") # use old Internet/Windows-style newlines
+    s = hl7.emit.hl7_escape_non_ascii(s) # translate some common non-ASCII characters
+    # to make sure this works we encode and then decode here, anything > 127 that gets to here will get
+    # mapped to "?"
+    s = bytes(s,"us-ascii","replace")
+    # there's no standard MIME type for PIT
+    # in fact AFAICT this is the first time anyone has tried to
+    # send PIT via SMTP e-mail. "application/x-pit" therefore is entirely my own invention
+    mt = MIMEApplication('',_subtype="x-pit")
     mt['Content-Disposition'] = 'attachment; filename="{}"'.format(enput['filename'])
+    mt.set_payload(hl7.emit.quopri_hl7(s))
+    del mt['Content-Transfer-Encoding']
+    mt['Content-Transfer-Encoding'] = 'quoted-printable' 
     mt.set_param('name',enput['filename'])
     return mt
 
@@ -183,15 +201,15 @@ def make_pit_rtf(ld):
     if ld.has("original_rtf"):
         trtf = ld.original_rtf
     else:
-        trtf = rtf.convert_from_ld(ld.getvalue())
+        trtf = rtf.convert_rtf_from_ld(ld.getvalue())
     trtf = trtf.replace("\n","")
     trtf = trtf.replace("\r","")
     # rtf as a single line: not documented anywhere but rumoured to work
-    enput['context'] = "301 "+trtf
-    return pit_finish(enput,ld)
+    enput['content'] = "301 "+trtf
+    return pit_finish(enput)
 
-register_outputter("PIT",make_pit_text)
-register_outputter("PIT+RTF",make_pit_rtf)
+register_outputter("pit-ft",make_pit_text,'PIT - plain text') # PIT/formatted text (for consistency with hl7-**-ft, even though PIT and HL7 "formatted text" are not equivalent
+register_outputter("pit-rtf",make_pit_rtf,'PIT - RTF embedded') # PIT/Rich Text Format
 
 
 def extract_addressee(pit):
