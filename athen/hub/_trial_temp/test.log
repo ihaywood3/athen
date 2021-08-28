@@ -1,0 +1,5 @@
+2021-07-11 17:50:32+1000 [-] Log opened.
+2021-07-11 17:50:32+1000 [-] --> test_server.HubTest.test_getpage <--
+2021-07-11 18:29:41+1000 [-] Starting factory _HTTP11ClientFactory(<function HTTPConnectionPool._newConnection.<locals>.quiescentCallback at 0x7fc7da5ac3a0>, <twisted.internet.endpoints._WrapperEndpoint object at 0x7fc7da63f7f0>)
+2021-07-11 18:29:41+1000 [-] Main loop terminated.
+2021-07-11 18:29:41+1000 [-] Stopping factory _HTTP11ClientFactory(<function HTTPConnectionPool._newConnection.<locals>.quiescentCallback at 0x7fc7da5ac3a0>, <twisted.internet.endpoints._WrapperEndpoint object at 0x7fc7da63f7f0>)
