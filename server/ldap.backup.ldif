@@ -1,0 +1,50 @@
+dn: dc=athen,dc=email
+objectClass: domain
+description: Autonomous Transport for Heath: Encrypted Network
+dc: athen
+structuralObjectClass: domain
+entryUUID: a17490a4-d7bb-1035-8d1d-eb27eb906a1c
+creatorsName: cn=admin,dc=athen,dc=email
+createTimestamp: 20160706115050Z
+entryCSN: 20160706115050.829187Z#000000#000#000000
+modifiersName: cn=admin,dc=athen,dc=email
+modifyTimestamp: 20160706115050Z
+
+dn: cn=admin,dc=athen,dc=email
+objectClass: person
+cn: admin
+sn: admin
+structuralObjectClass: person
+entryUUID: a17ee6f8-d7bb-1035-8d1e-eb27eb906a1c
+creatorsName: cn=admin,dc=athen,dc=email
+createTimestamp: 20160706115050Z
+entryCSN: 20160706115050.896933Z#000000#000#000000
+modifiersName: cn=admin,dc=athen,dc=email
+modifyTimestamp: 20160706115050Z
+
+dn: mxDomain=athen.email,dc=athen,dc=email
+mxDomain: athen.email
+objectClass: athenMailer
+objectClass: top
+status: C
+structuralObjectClass: athenMailer
+entryUUID: 6ca2e83e-12a3-1037-8b81-11d723d9e9c4
+creatorsName: cn=admin,dc=athen,dc=email
+createTimestamp: 20170811054110Z
+entryCSN: 20170811054110.567082Z#000000#000#000000
+modifiersName: cn=admin,dc=athen,dc=email
+modifyTimestamp: 20170811054110Z
+
+dn: cn=uidNext,dc=athen,dc=email
+cn: uidNext
+objectClass: uidNext
+objectClass: top
+structuralObjectClass: uidNext
+entryUUID: 2fe6f8f0-12cf-1037-80c0-e92bf9226d4b
+creatorsName: cn=admin,dc=athen,dc=email
+createTimestamp: 20170811105426Z
+uidNumber: 1128
+entryCSN: 20170904051740.357224Z#000000#000#000000
+modifiersName: cn=admin,dc=athen,dc=email
+modifyTimestamp: 20170904051740Z
+
