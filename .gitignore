@@ -6,4 +6,8 @@
 *.bak
 dist/
 latex_output/
+_trial_temp/
+twistd.pid
+tmp
+*.zodb
 
