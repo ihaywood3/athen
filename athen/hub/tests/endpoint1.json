@@ -1,0 +1,14 @@
+{
+    "resourceType": "Endpoint",
+    "status": "active",
+    "connectionType": {"system": "http://hl7.org/fhir/ValueSet/endpoint-connection-type",
+		       "code":"hl7-fhir-msg"},
+    "payloadType": [{"coding": [{"system": "http://athen.email/endpoint-payload-type","code": "urn:pit-txt"}]},
+		    {"coding": [{"system": "http://athen.email/endpoint-payload-type","code": "urn:pit-rtf"}]},
+		    {"coding": [{"system": "http://athen.email/endpoint-payload-type","code": "urn:hl7v2:ref"}]},
+		    {"coding": [{"system": "http://athen.email/endpoint-payload-type","code": "urn:hl7v2:obr"}]}
+		   ],
+    "payloadMimeType": ["application/fhir+json","application/pgp-encrypted"],
+    "address": "https://athen.email/rproxy/1/"
+}
+

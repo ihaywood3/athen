@@ -1,0 +1,13 @@
+{
+    "resourceType": "PractitionerRole",
+    "identifier": [{
+	"value": "246564PJ",
+	"type": {"coding": [{
+	    "system": "http://hl7.org.au/fhir/v2/0203",
+	    "code": "UPIN"
+	}]}}],
+    "active": true,
+    "practitioner": {"reference": "/auth/Practitioner/2"},
+    "organization": {"reference": "/auth/Organization/1"},
+    "endpoint": [{"reference": "/auth/Endpoint/4"}]
+}

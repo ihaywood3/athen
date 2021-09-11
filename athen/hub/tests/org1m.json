@@ -1,0 +1,17 @@
+{
+    "resourceType": "Organization",
+    "id": 1,
+    "name": "Ninox Clinic",
+    "active": true,
+    "address":[{
+	"use":"work",
+	"type": "both",
+	"line": ["65 Robertson Dr"],
+	"state": "Victoria",
+	"postalCode": "3940",
+	"city": "MORNINGTON"
+    }],
+    "type":[{
+	"coding": [{"system": "http://terminology.hl7.org/CodeSystem/organization-type",
+		    "code": "prov"}]}]}
+

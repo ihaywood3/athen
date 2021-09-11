@@ -1,0 +1,40 @@
+{
+    "resourceType": "Practitioner",
+    "identifier": [{
+	"value": "MED123456",
+	"type": {"coding": [{
+	    "system": "http://hl7.org.au/fhir/v2/0203",
+	    "code": "AHPRA"
+	}]}}],
+    "active": true,
+    "name": [{
+	"use": "official",
+	"family": "Haywood",
+	"given": ["Ian"]
+    }],
+    "telecom": [{
+	"system": "email",
+	"use": "work",
+	"value": "ian@haywood.id.au"
+    }],
+    "gender": "male",
+    "birthDate": "19971219",
+    "qualification": [{
+	"code": {
+	    "coding": [{
+		"system": "http://terminology.hl7.org/CodeSystem/v2-0360|2.7",
+		"code": "MD"
+	    }]}}],
+    "communication": [{
+	"text": "English",
+	"coding": [{
+	    "system": "http://hl7.org/fhir/ValueSet/languages",
+	    "code": "en"
+	}]},
+		      {
+			  "text": "German",
+	"coding": [{
+	    "system": "http://hl7.org/fhir/ValueSet/languages",
+	    "code": "de"
+	}]}]
+}
