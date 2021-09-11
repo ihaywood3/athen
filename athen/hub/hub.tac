@@ -5,7 +5,7 @@ from twisted.web.resource import Resource
 from twisted.cred.portal import Portal
 from twisted.web.guard import BasicCredentialFactory, HTTPAuthSessionWrapper
 
-from athen.hub import resource, auth
+from athen.hub import resource, auth, db
 
 
 def getWebService():
@@ -23,6 +23,7 @@ def getWebService():
 
 
 application = service.Application("athen hub")
+db.set_dbpath("/home/ian/athen.zodb")
 
 # attach the service to its parent application
 _service = getWebService()

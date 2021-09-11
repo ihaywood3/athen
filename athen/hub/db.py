@@ -12,27 +12,24 @@ import ZODB, ZODB.FileStorage
 from athen.hub import fhir, error
 from athen.hub.fhir import MAGIC_EXTENSIONS, get_ext, set_ext, del_ext, has_ext
 
+db = None
 
-def _get_db():
-    if "ATHEN_DB" in os.environ:
-        dbpath = os.environ["ATHEN_DB"]
-    else:
-        dbpath = os.path.expanduser("~/athen.zodb")
+
+def set_dbpath(dbpath):
+    # to be called from the .tac
+    global db
     storage = ZODB.FileStorage.FileStorage(dbpath)
-    return ZODB.DB(storage)
+    db = ZODB.DB(storage)
 
-
-db = _get_db()
-
-with db.transaction() as c:
-    if not hasattr(c.root, "accounts"):
-        c.root.accounts = OOBTree.BTree()
-    if not hasattr(c.root, "docs"):
-        c.root.docs = IOBTree.BTree()
-    if not hasattr(c.root, "names"):
-        c.root.names = OOBTree.BTree()
-    if not hasattr(c.root, "id_count"):
-        c.root.id_count = 0
+    with db.transaction() as c:
+        if not hasattr(c.root, "accounts"):
+            c.root.accounts = OOBTree.BTree()
+        if not hasattr(c.root, "docs"):
+            c.root.docs = IOBTree.BTree()
+        if not hasattr(c.root, "names"):
+            c.root.names = OOBTree.BTree()
+        if not hasattr(c.root, "id_count"):
+            c.root.id_count = 1
 
 
 def make_salt():
@@ -62,7 +59,7 @@ class Account(persistent.Persistent):
 @attr.s
 class Document(persistent.Persistent):
     version = attr.ib(factory=IOBTree.BTree)
-    vid_counter = attr.ib(default=0)
+    vid_counter = attr.ib(default=1)
     deleted = attr.ib(default=False)
 
     def add_doc(self, doc, protect_ext=True):
@@ -87,58 +84,56 @@ class Document(persistent.Persistent):
         return d
 
 
-def new_doc(doc, acct):
-    with db.transaction() as c:
-        doc["id"] = c.root.id_count
-        c.root.id_count += 1
-        d = Document()
-        d.add_doc(d)
-        c.root.docs[doc["id"]] = d
-        c.root.accounts[acct].docs[doc["id"]] = d
+def tx():
+    return db.transaction()
+
+
+def new_doc(conn, doc, acct):
+    doc["id"] = conn.root.id_count
+    conn.root.id_count += 1
+    d = Document()
+    d.add_doc(doc)
+    conn.root.docs[doc["id"]] = d
+    conn.root.accounts[acct].docs[doc["id"]] = d
     return d
 
 
-def get_doc(id_):
-    with db.transaction() as c:
-        try:
-            d = c.root.docs[id_]
-        except KeyError:
-            raise error.NoResource()
+def get_doc(conn, id_):
+    try:
+        d = conn.root.docs[id_]
+    except KeyError:
+        raise error.NoResource()
     if d.deleted:
         raise error.Deleted()
     return d
 
 
-def get_user(username):
-    with db.transaction() as c:
-        return c.root.accounts.get(username)
+def get_user(conn, username):
+    return conn.root.accounts.get(username)
 
 
-def set_user(username, new_account):
-    with db.transaction() as c:
-        c.root.accounts[username] = new_account
+def set_user(conn, username, new_account):
+    conn.root.accounts[username] = new_account
 
 
-def put_doc(doc, acct):
-    with db.transaction() as c:
-        a = c.root.accounts[acct]
-        if doc["id"] not in a.docs:
-            # shouldn't this be a 404? no, because the spec allows PUT
-            # to create resources, this signals we don't implement it
-            raise error.FHIRException(405, "not-supported", "MSG_UNKNOWN_OPERATION")
-        d = a.docs[doc["id"]]
-        d.deleted = False
-        d.add_doc(doc)
+def put_doc(conn, doc, acct):
+    a = conn.root.accounts[acct]
+    if doc["id"] not in a.docs:
+        # shouldn't this be a 404? no, because the spec allows PUT
+        # to create resources, this signals we don't implement it
+        raise error.FHIRException(405, "not-supported", "MSG_UNKNOWN_OPERATION")
+    d = a.docs[doc["id"]]
+    d.deleted = False
+    d.add_doc(doc)
 
 
-def delete_doc(id_, acct):
-    with db.transaction() as c:
-        a = c.root.accounts[acct]
-        if id_ not in a.docs:
-            raise error.NoResource()
-        d = a.docs[id_]
-        d.deleted = True
-        v = d.version[d.version.maxKey()]
+def delete_doc(conn, id_, acct):
+    a = conn.root.accounts[acct]
+    if id_ not in a.docs:
+        raise error.NoResource()
+    d = a.docs[id_]
+    d.deleted = True
+    v = d.version[d.version.maxKey()]
     return v
 
 
@@ -146,96 +141,52 @@ class ContinueException(Exception):
     pass
 
 
-def search_doc(params, typ):
-    with db.transaction() as c:
-        matches = []
-        for i in c.root.docs.values():
-            if i.deleted:
+def search_doc(conn, params, typ):
+    matches = []
+    for i in conn.root.docs.values():
+        if i.deleted:
+            continue
+        v = i.version[i.version.maxKey()]
+        if v["resourceType"] != typ:
+            continue
+        # if not get_ext(v, fhir.EXT_VERIFIED):
+        #    continue
+        if "identifier" in params:
+            if "identifier" not in v:
                 continue
-            v = i.version[i.version.maxKey()]
-            if v["resourceType"] != typ:
+            try:
+                for j in params["identifier"]:
+                    flag = False
+                    for k in v["identifier"]:
+                        if id1_match(j, k):
+                            flag = True
+                    if not flag:
+                        raise ContinueException()
+            except ContinueException:
                 continue
-            if not get_ext(v, fhir.EXT_VERIFIED):
+        if "identifier:of-type" in params:
+            if "identifier" not in v:
                 continue
-            if "identifier" in params:
-                if "identifier" not in v:
-                    continue
+            try:
+                for j in params["identifier:of-type"]:
+                    flag = False
+                    for k in v["identifier"]:
+                        if id2_match(j, k):
+                            flag = True
+                    if not flag:
+                        raise ContinueException()
+            except ContinueException:
+                continue
+        if "name" in params:
+            if typ == "Organization":
                 try:
-                    for j in params["identifier"]:
-                        flag = False
-                        for k in v["identifier"]:
-                            if id1_match(j, k):
-                                flag = True
-                        if not flag:
-                            raise ContinueException()
-                except ContinueException:
-                    continue
-            if "identifier:of-type" in params:
-                if "identifier" not in v:
-                    continue
-                try:
-                    for j in params["identifier:of-type"]:
-                        flag = False
-                        for k in v["identifier"]:
-                            if id2_match(j, k):
-                                flag = True
-                        if not flag:
-                            raise ContinueException()
-                except ContinueException:
-                    continue
-            if "name" in params:
-                if typ == "Organization":
-                    try:
-                        for j in params["name"]:
-                            flag = False
-                            names = []
-                            if "name" in v:
-                                names.append(v["name"])
-                            if "alias" in v:
-                                names.extend(v["alias"])
-                            for k in names:
-                                if text_match(j, k):
-                                    flag = True
-                            if not flag:
-                                raise ContinueException()
-                    except ContinueException:
-                        continue
-                elif typ == "Practitioner":
-                    try:
-                        for j in params["name"]:
-                            flag = False
-                            names = []
-                            for k in v["name"]:
-                                names.extend(k.get("given", []))
-                                names.extend(k.get("suffix", []))
-                                names.extend(k.get("prefix", []))
-                                if "text" in k:
-                                    names.append(k["text"])
-                                if "family" in k:
-                                    names.append(k["family"])
-                            for k in names:
-                                if text_match(j, k):
-                                    flag = True
-                            if not flag:
-                                raise ContinueException()
-                    except ContinueException:
-                        continue
-                else:
-                    continue
-            if "given" in params:
-                if typ != "Practitioner":
-                    raise error.FHIRException(
-                        400,
-                        "processing",
-                        "MSG_PARAM_UNKNOWN",
-                        "search param given can only be used on Practitioner",
-                    )
-                try:
-                    for j in params["given"]:
+                    for j in params["name"]:
                         flag = False
                         names = []
-                        for k in v["name"]:
-                            names.extend(k.get("given", []))
+                        if "name" in v:
+                            names.append(v["name"])
+                        if "alias" in v:
+                            names.extend(v["alias"])
                         for k in names:
                             if text_match(j, k):
                                 flag = True
@@ -243,33 +194,76 @@ def search_doc(params, typ):
                             raise ContinueException()
                 except ContinueException:
                     continue
-            if "family" in params:
-                if typ != "Practitioner":
-                    raise error.FHIRException(
-                        400,
-                        "processing",
-                        "MSG_PARAM_UNKNOWN",
-                        "search param family can only be used on Practitioner",
-                    )
-                if len(params["family"]) > 1:
-                    raise error.FHIRException(
-                        400,
-                        "processing",
-                        "MSG_PARAM_NO_REPEAT",
-                        "family is not allowed to repeat",
-                    )
-                family = params["family"][0]
-                flag = False
-                names = []
-                for k in v["name"]:
-                    if "family" in k:
-                        names.append(k["family"])
-                for k in names:
-                    if text_match(family, k):
-                        flag = True
-                if not flag:
+            elif typ == "Practitioner":
+                try:
+                    for j in params["name"]:
+                        flag = False
+                        names = []
+                        for k in v["name"]:
+                            names.extend(k.get("given", []))
+                            names.extend(k.get("suffix", []))
+                            names.extend(k.get("prefix", []))
+                            if "text" in k:
+                                names.append(k["text"])
+                            if "family" in k:
+                                names.append(k["family"])
+                        for k in names:
+                            if text_match(j, k):
+                                flag = True
+                        if not flag:
+                            raise ContinueException()
+                except ContinueException:
                     continue
-            matches.append(i)
+            else:
+                continue
+        if "given" in params:
+            if typ != "Practitioner":
+                raise error.FHIRException(
+                    400,
+                    "processing",
+                    "MSG_PARAM_UNKNOWN",
+                    "search param given can only be used on Practitioner",
+                )
+            try:
+                for j in params["given"]:
+                    flag = False
+                    names = []
+                    for k in v["name"]:
+                        names.extend(k.get("given", []))
+                    for k in names:
+                        if text_match(j, k):
+                            flag = True
+                    if not flag:
+                        raise ContinueException()
+            except ContinueException:
+                continue
+        if "family" in params:
+            if typ != "Practitioner":
+                raise error.FHIRException(
+                    400,
+                    "processing",
+                    "MSG_PARAM_UNKNOWN",
+                    "search param family can only be used on Practitioner",
+                )
+            if len(params["family"]) > 1:
+                raise error.FHIRException(
+                    400,
+                    "processing",
+                    "MSG_PARAM_NO_REPEAT",
+                    "family is not allowed to repeat",
+                )
+            family = params["family"][0]
+            flag = False
+            names = []
+            for k in v["name"]:
+                if "family" in k:
+                    names.append(k["family"])
+            for k in names:
+                if text_match(family, k):
+                    flag = True
+            if not flag:
+                continue
+        matches.append(dict(v))
     return matches
 
 
@@ -320,7 +314,7 @@ def id2_match(param, identifier):
         )
 
 
-def text_match(param, data):
+def text_match(param, text):
     param = param.upper()
     text = text.upper()
     return text.startswith(param)

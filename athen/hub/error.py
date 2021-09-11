@@ -38,7 +38,7 @@ class Forbidden(FHIRException):
 
 class Deleted(FHIRException):
     def __init__(self):
-        FHIRException.__init__(self, 412, "deleted", "MSG_DELETED")
+        FHIRException.__init__(self, 410, "deleted", "MSG_DELETED")
 
 
 class JSONException(FHIRException):

@@ -304,7 +304,7 @@ register_schema(
     contact=(B, "ContactPoint"),
     period=(O, "Period"),
     payloadType=(M, "CodeableConcept"),
-    payloadMimeType=(O, re.compile(r"[a-z]+/[a-z][a-z0-9\-\.]*")),
+    payloadMimeType=(B, re.compile(r"[a-z]+/[a-z][a-z0-9\-\.]*")),
     address=(0, URI_REGEX),
     header=(B, str),
 )

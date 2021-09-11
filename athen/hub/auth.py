@@ -23,19 +23,20 @@ class AccountsChecker:
         else:
             return failure.Failure(error.UnauthorizedLogin())
 
-    def requestAvatarId(self, c):
-        credential = credentials.IUsernamePassword(c, None)
+    def requestAvatarId(self, cx):
+        credential = credentials.IUsernamePassword(cx, None)
         if credential:
-            u = db.get_user(credential.username)
-            if u:
-                return defer.maybeDeferred(
-                    u.check_password, credential.password
-                ).addCallback(self._cbPasswordMatch, credential.username)
-            else:
-                a = db.Account(credential.username)
-                a.set_password(credential.password)
-                db.set_user(credential.username, a)
-                return defer.succeed(credential.username)
+            with db.tx() as c:
+                u = db.get_user(c, credential.username)
+                if u:
+                    return defer.maybeDeferred(
+                        u.check_password, credential.password
+                    ).addCallback(self._cbPasswordMatch, credential.username)
+                else:
+                    a = db.Account(credential.username)
+                    a.set_password(credential.password)
+                    db.set_user(c, credential.username, a)
+            return defer.succeed(credential.username)
         else:
             return defer.succeed(checkers.ANONYMOUS)
 

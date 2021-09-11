@@ -34,11 +34,11 @@ class FHIRPage(Resource):
                 v = doc["meta"]["lastUpdated"]
                 v = time.mktime(fhir.parse_instant(v))
                 if request.setLastModified(v) == CACHED:
-                    return
+                    return b""
             if "versionId" in doc["meta"]:
                 e = 'W/"%d"' % doc["meta"]["versionId"]
                 if request.setETag(e) == CACHED:
-                    return
+                    return b""
         action = default
         if not fixed:
             p = request.getHeader("Prefer")
@@ -47,7 +47,8 @@ class FHIRPage(Resource):
                 if p[0] == "return":
                     action = p[1]
         if action == "minimal":
-            return
+            # request.setResponseCode(204)  # "no response"
+            return b""
         elif action == "representation":
             return json.dumps(doc, indent=indent).encode("utf-8")
         elif action == "OperationOutcome":
@@ -99,26 +100,28 @@ class FHIRPage(Resource):
             elif len(request.postpath) == 2:
                 typ = request.postpath[0].decode("ascii")
                 id_ = int(request.postpath[1])
-                d = db.get_doc(id_)
-                v = d.version[d.version.maxKey()]
-                if v["resourceType"] != typ:
-                    raise error.WrongResourceType()
-                if head:
-                    return self._send(request, v, "minimal", True)
-                else:
-                    return self._send(request, v, "representation", True)
+                with db.tx() as c:
+                    d = db.get_doc(c, id_)
+                    v = d.version[d.version.maxKey()]
+                    if v["resourceType"] != typ:
+                        raise error.WrongResourceType()
+                    if head:
+                        return self._send(request, v, "minimal", True)
+                    else:
+                        return self._send(request, v, "representation", True)
             elif len(request.postpath) == 4 and request.postpath[2] == b"_history":
                 typ = request.postpath[0].decode("ascii")
                 vid = int(request.postpath[3])
                 id_ = int(request.postpath[1])
-                d = db.get_doc(id_)
-                v = d.version[vid]
-                if v["resourceType"] != typ:
-                    raise error.WrongResourceType()
-                if head:
-                    return self._send(request, v, "minimal", True)
-                else:
-                    return self._send(request, v, "representation", True)
+                with db.tx() as c:
+                    d = db.get_doc(c, id_)
+                    v = d.version[vid]
+                    if v["resourceType"] != typ:
+                        raise error.WrongResourceType()
+                    if head:
+                        return self._send(request, v, "minimal", True)
+                    else:
+                        return self._send(request, v, "representation", True)
             else:
                 raise error.NoResource()
         except error.FHIRException as e:
@@ -133,7 +136,6 @@ class FHIRPage(Resource):
         return json.dumps(e.oo, indent=4).encode("utf-8")
 
     def _error_async(self, request, e):
-        log.failure("_error")
         request.setHeader("Content-Type", "application/fhir+json")
         request.setResponseCode(e.http_status)
         request.write(json.dumps(e.oo, indent=4).encode("utf-8"))
@@ -166,13 +168,14 @@ class FHIRPage(Resource):
             return self._error(request, error.PythonException(str(e)))
 
     def _create(self, request, doc):
-        db.new_doc(doc, self.acct)
-        loc = "%s/%d" % (doc["resourceType"], doc["id"])
-        request.setHeader(
-            b"Location", b"/" + b"/".join(request.prepath + [loc.encode("ascii")])
-        )
-        request.setResponseCode(201)
-        return self._send(request, doc, "minimal")
+        with db.tx() as c:
+            db.new_doc(c, doc, self.acct)
+            loc = "%s/%d" % (doc["resourceType"], doc["id"])
+            request.setHeader(
+                b"Location", b"/" + b"/".join(request.prepath + [loc.encode("ascii")])
+            )
+            request.setResponseCode(201)
+            return self._send(request, doc, "minimal")
 
     def render_PUT(self, request):
         try:
@@ -191,10 +194,13 @@ class FHIRPage(Resource):
                     raise error.JSONException("required", "MSG_RESOURCE_ID_MISSING")
                 if doc["id"] != id_:
                     raise error.JSONException(
-                        "value", oo_code="MSG_RESOURCE_ID_MISMATCH"
+                        "value",
+                        oo_code="MSG_RESOURCE_ID_MISMATCH",
+                        diagnostic="%r %r" % (doc["id"], id_),
                     )
-                db.put_doc(doc, self.acct)
-                return self._send(request, doc, "minimal")
+                with db.tx() as c:
+                    db.put_doc(c, doc, self.acct)
+                    return self._send(request, doc, "minimal")
             else:
                 raise error.NoResource()
         except error.FHIRException as e:
@@ -209,8 +215,9 @@ class FHIRPage(Resource):
                     raise error.Forbidden()
                 typ = request.postpath[0].decode("ascii")
                 id_ = int(request.postpath[1])
-                v = db.delete_doc(id_, self.acct)
-                return self._send(request, v, "minimal")
+                with db.tx() as c:
+                    v = db.delete_doc(c, id_, self.acct)
+                    return self._send(request, v, "minimal")
             else:
                 raise error.NoResource()
         except error.FHIRException as e:
@@ -221,39 +228,50 @@ class FHIRPage(Resource):
     def _search(self, request, typ):
         params = {
             k.decode("utf-8"): [i.decode("utf-8").upper() for i in v]
-            for k, v in request.args
+            for k, v in request.args.items()
         }
 
+        def _threadSearch(params):
+            with db.tx() as c:
+                base_url = b"/" + b"/".join(request.prepath)
+                base_url = base_url.decode("ascii")
+                if base_url != "/":
+                    base_url += "/"
+                r = db.search_doc(c, params, typ)
+                bundle = {
+                    "resourceType": "Bundle",
+                    "type": "searchset",
+                    "timestamp": fhir.make_instant(),
+                    "total": len(r),
+                    "entry": [
+                        {
+                            "fullUrl": "%s%s/%d"
+                            % (base_url, i["resourceType"], i["id"]),
+                            "resource": i,
+                            "search": {"mode": "match"},
+                        }
+                        for i in r
+                    ],
+                }
+                if params.get("_pretty") == ["1"]:
+                    indent = 4
+                else:
+                    indent = None
+                return json.dumps(bundle, indent=indent).encode("utf-8")
+
         def _writeResult(r):
-            base_url = b"/" + b"/".join(request.prepath)
-            base_url = base_url.decode("ascii")
-            if base_url != "/":
-                base_url += "/"
-            bundle = {
-                "resourceType": "Bundle",
-                "type": "searchset",
-                "timestamp": fhir.make_instant(),
-                "total": len(r),
-                "entry": [
-                    {
-                        "fullUrl": "%s%s/%d" % (base_url, i["resourceType"], i["id"]),
-                        "resource": i,
-                        "search": {"mode": "match"},
-                    }
-                    for i in r
-                ],
-            }
             request.setHeader("Content-Type", "application/fhir+json")
-            request.write(json.dumps(bundle).encode("utf-8"))
+            request.write(r)
             request.finish()
 
         def _resultError(failure, request):
+            log.failure("async error", failure)
             if failure.check(error.FHIRException):
-                self._error(request, failure.value)
+                self._error_async(request, failure.value)
             else:
                 self._error_async(request, error.PythonException(str(failure.value)))
 
-        d = deferToThread(db.search_doc, params)
+        d = deferToThread(_threadSearch, params)
         d.addCallback(_writeResult)
         d.addErrback(_resultError, request)
         return NOT_DONE_YET

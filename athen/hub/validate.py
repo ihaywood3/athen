@@ -1,5 +1,7 @@
 import re
 
+from twisted.logger import Logger
+
 from athen.hub import error
 
 
@@ -8,6 +10,8 @@ CARD_OPTIONAL = 2
 CARD_BOTH = 3
 
 SCHEMATA = {}
+
+log = Logger()
 
 
 def register_schema(typ, **fields):
@@ -32,8 +36,9 @@ def check_dict(obj, typ=None):
     if "contained" in obj and "__contained" in schema:
         s.remove("contained")
         obj["contained"] = [check_dict(i) for i in obj["contained"]]
-    for k, v in schema:
+    for k, v in schema.items():
         if not k[:2] == "__":
+            log.info("schema %r %r" % (k, v))
             card, typ = v
             if k in obj:
                 s.remove(k)
@@ -77,7 +82,7 @@ def check_scalar(obj, card, typ):
                     "value", diagnostic="%r is not in the set of allowed values" % obj
                 )
         elif isinstance(typ, re.Pattern):
-            if not typ.match(obj):
+            if not typ.match(str(obj)):
                 raise error.JSONException(
                     "value",
                     "MSG_BAD_FORMAT",
