@@ -1,75 +1,36 @@
-'''
+# Import the required libraries
+from tkinter import *
+from pystray import MenuItem as item
+import pystray
+from PIL import Image, ImageTk
 
-The Windows main script
-adapted from example by Alex Baker (7/7/2008) http://essiene.blogspot.com/2005/04/python-windows-services.html
+from athen.client import gui
 
- Usage : python aservice.py install
- Usage : python aservice.py start
- Usage : python aservice.py stop
- Usage : python aservice.py remove
- 
- C:\>python aservice.py  --username <username> --password <PASSWORD> --startup auto install
+ICON_PATH="C:\\Users\\Smartbox\\Downloads\\athen.ico" 
 
-'''
+# Create an instance of tkinter frame or window
+win=Tk()
+gui.gui_setup(win)
 
+# Define a function for quit the window
+def quit_window(icon, item):
+   icon.stop()
+   win.destroy()
 
-import win32service
-import win32serviceutil
-import win32api
-import win32con
-import win32event
-import win32evtlogutil
-import os, logging, loggin.handlers
+# Define a function to show the window again
+def show_window(icon, item):
+   icon.stop()
+   win.after(0,win.deiconify())
 
-import base, imap
+# Hide the window and show on the system taskbar
+def hide_window():
+   win.withdraw()
+   image=Image.open(ICON_PATH)
+   menu=pystray.Menu(item('Quit', quit_window), item('Show', show_window, default=True))
+   icon=pystray.Icon("ATHEN", image, "ATHEN", menu=menu)
+   icon.run()
 
+win.protocol('WM_DELETE_WINDOW', hide_window)
+win.iconbitmap(ICON_PATH)
 
-class Emailer(imap.Emailer):
-    
-    def wait(self,timeout):
-        win32event.WaitForSingleObject(self.hWaitStop, int(timeout*1000))
-        
-    def split_paths(self, path):
-        return path.split(';')
-        
-
-class aservice(win32serviceutil.ServiceFramework):
-   
-    _svc_name_ = "athen"
-    _svc_display_name_ = "ATHEN downloader"
-    _svc_description_ = "Downloads/uploads messages via email on the ATHEN system"
-         
-    def __init__(self, args):
-        win32serviceutil.ServiceFramework.__init__(self, args)
-        self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)           
-
-    def SvcStop(self):
-        self.ReportServiceStatus(win32service.SERVICE_STOP_PENDING)
-        self.imap.running = False
-        win32event.SetEvent(self.hWaitStop)                    
-         
-    def SvcDoRun(self):
-        import servicemanager
-        servicemanager.LogMsg(servicemanager.EVENTLOG_INFORMATION_TYPE,servicemanager.PYS_SERVICE_STARTED,(self._svc_name_, ''))
-        nthandler = logging.handlers.NTEventLogHandler("ATHEN service")
-        logger = logging.getLogger()
-        logger.addHandler(nthandler)
-        logging.getLogger().setLevel(logging.INFO)
-        try:
-            self.db = base.DB()
-            logger.addHandler(base.SQLiteHandler(self.db))
-            self.imap = Emailer(db)
-            self.imap.hWaitStop = self.hWaitStop
-            self.imap.loop()
-        except:
-            logging.exception("in iniitialisation")
-        servicemanager.LogInfoMsg("ATHEN service - STOPPED")
-   
-               
-      
-def ctrlHandler(ctrlType):
-    return True
-                  
-if __name__ == '__main__':   
-    win32api.SetConsoleCtrlHandler(ctrlHandler, True)   
-    win32serviceutil.HandleCommandLine(aservice)
+win.mainloop()
